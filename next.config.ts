@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Explicitly externalize these packages for Vercel/Serverless environment
   serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
 };
 
