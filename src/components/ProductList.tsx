@@ -3,7 +3,6 @@
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { useState, useEffect } from "react";
-import { ExternalLink, Trash2 } from "lucide-react";
 
 interface Product {
     id: string;
@@ -13,18 +12,13 @@ interface Product {
     currency: string;
     url: string;
     source?: string;
-    brand?: string; // If scraping logic adds brand later
+    brand?: string;
     createdAt?: any;
 }
 
 export default function ProductList() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // Client-side fetching for real-time updates (matching dashboard.html behavior somewhat)
-    // or sticking to Server Component? The prompt originally asked for Server Component in previous step, 
-    // but now we are porting a specific UI which has interactive filtering. 
-    // Let's make it a Client Component to handle filtering/sorting state easily as per the HTML template.
 
     useEffect(() => {
         const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -36,98 +30,91 @@ export default function ProductList() {
         return () => unsubscribe();
     }, []);
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent link click
         if (confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
             await deleteDoc(doc(db, "products", id));
         }
     };
 
     const formatPrice = (price: number, currency: string) => {
-        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(price);
+        try {
+            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(price);
+        } catch (e) {
+            return `${price} ${currency}`;
+        }
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
+        return <div className="p-8 text-center text-gray-400 font-medium tracking-wide">Yükleniyor...</div>;
+    }
+
+    if (products.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="bg-gray-100 dark:bg-[#323122] p-6 rounded-full mb-4">
+                    <span className="material-symbols-outlined text-4xl text-gray-400">inventory_2</span>
+                </div>
+                <h3 className="text-lg font-bold text-[#181811] dark:text-white mb-2">Henüz Ürün Yok</h3>
+                <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+                    Yukarıdaki arama çubuğuna bir ürün linki yapıştırarak koleksiyonunuza eklemeye başlayın.
+                </p>
+            </div>
+        );
     }
 
     return (
-        <>
-            {/* Filter and Sort Bar */}
-            <div className="filter-sort-bar">
-                <div className="filter-sort-container">
-                    <div className="filter-item">
-                        <input type="text" id="product-search" className="filter-search-input" placeholder="ARA" autoComplete="off" />
+        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6 pb-12">
+            {products.map((product) => (
+                <div key={product.id} className="break-inside-avoid group relative flex flex-col gap-3">
+                    <div className="relative w-full overflow-hidden rounded-xl bg-white dark:bg-[#2d2c1b]">
+                        {/* Image */}
+                        <img
+                            alt={product.title}
+                            className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
+                            src={product.image || 'https://via.placeholder.com/400x500?text=No+Image'}
+                        />
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black/5 dark:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[1px]">
+                            <a
+                                href={product.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-primary text-black rounded-full p-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg hover:scale-110"
+                                title="Ürüne Git"
+                            >
+                                <span className="material-symbols-outlined text-[24px]">arrow_outward</span>
+                            </a>
+                        </div>
+
+                        {/* Delete Button (Custom addition to design) */}
+                        <button
+                            onClick={(e) => handleDelete(product.id, e)}
+                            className="absolute top-2 right-2 bg-white/80 dark:bg-black/50 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-500"
+                            title="Sil"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
                     </div>
-                    <div className="filter-item">
-                        <div className="select-wrapper">
-                            <select id="sort-select" className="filter-select-minimal">
-                                <option value="newest">YENİ</option>
-                                <option value="price-low">FİYAT ↑</option>
-                                <option value="price-high">FİYAT ↓</option>
-                            </select>
+
+                    {/* Content */}
+                    <div className="px-1">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            {product.source || 'Website'}
+                        </p>
+                        <div className="flex justify-between items-start mt-0.5">
+                            <h3 className="text-base font-medium leading-tight text-[#181811] dark:text-white line-clamp-2" title={product.title}>
+                                {product.title}
+                            </h3>
+                            <span className="text-base font-bold text-[#181811] dark:text-white shrink-0 ml-2">
+                                {formatPrice(product.price, product.currency)}
+                            </span>
                         </div>
                     </div>
-                    {/* Simplified for MVP */}
                 </div>
-            </div>
-
-            {/* Product Grid */}
-            <div className="products-grid">
-                {products.length === 0 ? (
-                    <div className="empty-state">
-                        <h3>Henüz Ürün Yok</h3>
-                        <p>Yukarıdaki kutucuğa bir link yapıştırın.</p>
-                    </div>
-                ) : (
-                    products.map((product) => (
-                        <div key={product.id} className="product-card">
-                            <div className="product-image-container relative">
-                                {/* Single Image for now */}
-                                <div className="carousel-images">
-                                    <img
-                                        src={product.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDI4MCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyODAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjhGOEY4Ii8+CjxwYXRoIGQ9Ik0xNDAgMTQwTDEwMCAxMDBIMTgwTDE0MCAxNDBaIiBmaWxsPSIjQ0NDIi8+Cjx0ZXh0IHg9IjE0MCIgeT0iMTYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiPkfDvHJzZWwgWXVrbMO8PC90ZXh0Pgo8L3N2Zz4K'}
-                                        alt={product.title}
-                                        className="product-image active w-full h-auto aspect-[3/4] object-cover"
-                                    />
-                                </div>
-
-                                {/* New Badge if recent? - Skipping for now */}
-                                <button className="add-to-collection-btn absolute top-2 right-2 opacity-0 group-hover:opacity-100" title="Koleksiyona Ekle">
-                                    +
-                                </button>
-                            </div>
-
-                            <div className="product-info p-4">
-                                <h3 className="text-sm font-medium line-clamp-2 min-h-[40px] mb-2 uppercase tracking-wide">
-                                    {product.title}
-                                </h3>
-                                <div className="price-container mb-4">
-                                    <span className="product-price text-lg font-bold">
-                                        {formatPrice(product.price, product.currency)}
-                                    </span>
-                                </div>
-
-                                <div className="product-actions flex items-center gap-2 border-t pt-3 border-gray-100">
-                                    <a
-                                        href={product.url}
-                                        target="_blank"
-                                        className="view-btn flex-1 flex items-center justify-center gap-2 text-xs uppercase"
-                                    >
-                                        SİTEYE GİT <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                    <button
-                                        onClick={() => handleDelete(product.id)}
-                                        className="delete-btn w-8 h-8 flex items-center justify-center"
-                                        title="Sil"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-        </>
+            ))}
+        </div>
     );
 }
+

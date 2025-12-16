@@ -19,52 +19,81 @@ export async function OPTIONS() {
 
 // Handle POST
 export async function POST(request: Request) {
+    let productData: any = {};
+    let targetCollection = "products";
+    const body = await request.json();
+    const { url } = body;
+
+    if (!url) {
+        return NextResponse.json(
+            { success: false, error: "URL is required" },
+            { status: 400, headers: corsHeaders() }
+        );
+    }
+
     try {
-        const body = await request.json();
-        const { url } = body;
+        // 1. Try Scrape
+        const scraped = await scrapeProduct(url);
 
-        if (!url) {
-            return NextResponse.json(
-                { success: false, error: "URL is required" },
-                { status: 400, headers: corsHeaders() }
-            );
+        // Check if scraping was actually successful
+        if (scraped.error || (!scraped.title && !scraped.price)) {
+            throw new Error("Scraping returned incomplete data");
         }
 
-        // 1. Scrape
-        const data = await scrapeProduct(url);
-
-        if (data.error || (!data.title && !data.price)) {
-            return NextResponse.json(
-                { success: false, error: data.error || "Failed to scrape product" },
-                { status: 422, headers: corsHeaders() }
-            );
-        }
-
-        // 2. Save to Firestore
-        const docRef = await addDoc(collection(db, "products"), {
+        // Success Case
+        targetCollection = "products";
+        productData = {
             url: url,
-            title: data.title,
-            price: data.price,
-            image: data.image,
-            currency: data.currency,
-            source: data.source,
+            title: scraped.title,
+            price: scraped.price,
+            image: scraped.image,
+            currency: scraped.currency,
+            source: scraped.source || new URL(url).hostname.replace('www.', ''),
             status: 'active',
+            isScrapeFailed: false
+        };
+
+    } catch (scrapeError) {
+        console.warn("Scraping failed, switching to failed_products collection:", scrapeError);
+
+        // Failure Case
+        targetCollection = "failed_products";
+        productData = {
+            url: url,
+            title: "Hatalı Link (Düzenle)",
+            price: 0, // Keeping numeric for consistency, though user prompt implies flexibility, numeric is safer for DB
+            image: "https://placehold.co/600x600?text=Manual+Edit",
+            error: true, // As requested
+            isScrapeFailed: true, // Keeping for backward compatibility/clarity
+            source: new URL(url).hostname.replace('www.', ''),
+            status: 'needs_review'
+        };
+    }
+
+    try {
+        // 3. Save to appropriate Firestore collection
+        const docRef = await addDoc(collection(db, targetCollection), {
+            ...productData,
             createdAt: serverTimestamp()
         });
 
-        // 3. Return Success
+        // 4. Return Success with Collection Info
         return NextResponse.json(
             {
                 success: true,
-                data: { id: docRef.id, ...data }
+                data: {
+                    id: docRef.id,
+                    collection: targetCollection,
+                    ...productData
+                }
             },
             { status: 200, headers: corsHeaders() }
         );
 
-    } catch (error: any) {
-        console.error("API Add Product Error:", error);
+    } catch (dbError: any) {
+        console.error("Firestore Save Error:", dbError);
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: "Database save failed" },
             { status: 500, headers: corsHeaders() }
         );
     }

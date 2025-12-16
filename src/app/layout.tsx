@@ -1,23 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import "@/styles/modern-ui.css";
-import "@/styles/product-cards.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Wishlist Tracker",
-  description: "Track your favorite products prices.",
+  title: "Miayis Dashboard",
+  description: "Universal Wishlist Tracker",
 };
+
+import Sidebar from "@/components/Sidebar";
 
 export default function RootLayout({
   children,
@@ -25,19 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
+    <html lang="en">
       <head>
-        {/* Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet" />
-
-
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${inter.variable} antialiased font-display bg-background-light text-text-main h-screen flex overflow-hidden`}>
+        <Sidebar />
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {children}
+        </div>
       </body>
     </html>
   );

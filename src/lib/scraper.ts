@@ -90,7 +90,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             }
         });
 
-        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        // Tarayıcıya "Ben gerçek bir insanım" kimliği ver
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+
+        // Ekstra başlıklar ekle (Dil ayarı vs.)
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        });
 
         // Navigate
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -159,6 +165,64 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     } catch (e) { }
                 }
             } catch (e) { }
+
+            if (result.price) return result;
+
+            // METHOD A.5: META TAGS (OPEN GRAPH / TWITTER)
+            try {
+                // Image
+                if (!result.image) {
+                    const imgMeta = document.querySelector('meta[property="og:image"]') ||
+                        document.querySelector('meta[property="twitter:image"]') ||
+                        document.querySelector('link[rel="image_src"]');
+                    if (imgMeta) result.image = imgMeta.getAttribute('content') || imgMeta.getAttribute('href');
+                }
+
+                // Title
+                if (!result.title || result.title === document.title) {
+                    const titleMeta = document.querySelector('meta[property="og:title"]') ||
+                        document.querySelector('meta[property="twitter:title"]') ||
+                        document.querySelector('meta[name="title"]');
+                    if (titleMeta) result.title = titleMeta.getAttribute('content');
+                }
+
+                // Price & Currency
+                const priceMeta = document.querySelector('meta[property="og:price:amount"]') ||
+                    document.querySelector('meta[property="product:price:amount"]') ||
+                    document.querySelector('meta[name="twitter:data1"]');
+
+                const currencyMeta = document.querySelector('meta[property="og:price:currency"]') ||
+                    document.querySelector('meta[property="product:price:currency"]');
+
+                if (priceMeta) {
+                    const pContent = priceMeta.getAttribute('content');
+                    if (pContent) {
+                        result.price = pContent;
+                        result.source = 'meta-tag';
+                    }
+                }
+
+                if (currencyMeta) {
+                    result.currency = currencyMeta.getAttribute('content') || "TRY";
+                }
+
+                // Fallback: Description Regex
+                if (!result.price) {
+                    const descMeta = document.querySelector('meta[name="description"]') ||
+                        document.querySelector('meta[property="og:description"]');
+                    if (descMeta) {
+                        const desc = descMeta.getAttribute('content');
+                        if (desc) {
+                            const match = desc.match(/(\d+[.,]?\d*)\s*(?:TL|TRY|USD|EUR|₺)/i) || desc.match(/(?:TL|TRY|USD|EUR|₺)\s*(\d+[.,]?\d*)/i);
+                            if (match) {
+                                result.price = match[1];
+                                result.source = 'meta-description';
+                            }
+                        }
+                    }
+                }
+
+            } catch (e) { console.log("Meta scan error", e); }
 
             if (result.price) return result;
 
