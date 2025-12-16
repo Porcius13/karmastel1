@@ -46,7 +46,7 @@ async function getBrowser() {
             args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
             defaultViewport: { width: 1920, height: 1080 },
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless === 'false' ? false : chromium.headless,
+            headless: true,
             ignoreHTTPSErrors: true,
         });
     } else {
