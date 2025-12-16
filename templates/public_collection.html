@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ collection.name }} - miayis</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap');
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product-cards.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    <style>
+
+        :root {
+            /* Les Benjamins inspired color palette - Minimalist Black & White */
+            --bg-primary: #ffffff;
+            --bg-secondary: #fafafa;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border-color: #e5e5e5;
+            --accent-color: #000000;
+            --accent-hover: #333333;
+            --card-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --success-bg: #f0f0f0;
+            --success-text: #000000;
+            --error-bg: #f0f0f0;
+            --error-text: #000000;
+            --gradient-primary: #000000;
+            --gradient-secondary: #000000;
+            --glass-bg: rgba(255, 255, 255, 1);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #999999;
+            --border-color: #333333;
+            --accent-color: #ffffff;
+            --accent-hover: #cccccc;
+            --card-bg: #0a0a0a;
+            --shadow: rgba(255, 255, 255, 0.05);
+            --success-bg: #1a1a1a;
+            --success-text: #ffffff;
+            --error-bg: #1a1a1a;
+            --error-text: #ffffff;
+            --gradient-primary: #ffffff;
+            --gradient-secondary: #ffffff;
+            --glass-bg: rgba(0, 0, 0, 1);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Touch-friendly improvements */
+        button,
+        a,
+        input,
+        select,
+        textarea {
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+            position: relative;
+            overflow-x: hidden;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .logo {
+            font-family: 'Alkatra', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+            font-size: 28px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s ease;
+            text-transform: none;
+        }
+
+        .logo:hover {
+            opacity: 0.6;
+        }
+
+        .header-search {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 40px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-upload-progress {
+            position: absolute;
+            left: 0;
+            right: 40px;
+            bottom: -4px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border-radius: 999px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .header-upload-progress.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .header-upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #000000, #555555);
+            transform-origin: left center;
+            transition: width 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress-bar {
+            background: linear-gradient(90deg, #ffffff, #999999);
+        }
+
+        .header-search input {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            background: transparent;
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+            font-weight: 400;
+        }
+
+        .header-search input:focus {
+            outline: none;
+            border-bottom-color: var(--text-primary);
+        }
+
+        .header-search input::placeholder {
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+
+        .header-search-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+            min-width: auto;
+        }
+
+        .header-search-btn:hover {
+            opacity: 0.6;
+            transform: translateY(-2px);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .favorites-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 20px;
+            width: 28px;
+            height: 28px;
+            transition: opacity 0.2s ease;
+        }
+
+        .favorites-link:hover {
+            opacity: 0.6;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 12px;
+            font-weight: 400;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            opacity: 0.6;
+        }
+
+        .nav-icon-link {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-icon-link:hover {
+            opacity: 0.6;
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.6;
+        }
+
+        .theme-icon {
+            transition: transform 0.3s ease;
+            line-height: 1;
+        }
+
+        [data-theme="dark"] .theme-icon {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            height: auto;
+        }
+
+        .profile-btn:hover {
+            opacity: 0.6;
+        }
+
+        .profile-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .profile-icon img {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .profile-name {
+            font-weight: 600;
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-dropdown.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            min-width: 200px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .profile-dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 8px 0;
+        }
+
+        .logout-item {
+            color: #ff4757;
+        }
+
+        .logout-item:hover {
+            background: #ff4757;
+            color: white;
+        }
+
+        .notification-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .notification-dropdown .notification-content {
+            right: 0;
+            left: auto;
+        }
+
+        .notification-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            position: relative;
+            color: var(--text-primary);
+        }
+
+        .notification-btn:hover {
+            opacity: 0.6;
+        }
+
+        .notification-icon {
+            font-size: 20px;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification-content {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: var(--card-bg);
+            min-width: 350px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 0;
+            z-index: 10000;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: none !important;
+        }
+
+        .notification-content.show {
+            display: block !important;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notification-header h3 {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .mark-all-read {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 0;
+            font-size: 10px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .mark-all-read:hover {
+            background: var(--text-primary);
+            color: var(--card-bg);
+        }
+
+        .notification-list {
+            padding: 15px 20px;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item .icon {
+            font-size: 20px;
+            color: var(--accent-color);
+        }
+
+        .notification-item .message {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .notification-item .timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .notification-item.unread {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px 10px;
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 20px;
+            }
+
+            .header-search {
+                margin: 0 15px;
+                order: 3;
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .header-actions {
+                gap: 10px;
+            }
+
+            .main-content {
+                padding: 40px 20px;
+            }
+        }
+
+        .collection-header {
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .collection-header-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .collection-name {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .collection-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .collection-meta {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .collection-owner {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .collection-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .like-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid var(--glass-border);
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .like-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--shadow);
+        }
+
+        .like-btn.liked {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .like-btn.liked:hover {
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .like-icon {
+            font-size: 20px;
+        }
+
+        .likes-count {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px var(--shadow);
+        }
+
+        .product-image-container {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            overflow: hidden;
+            background: var(--bg-secondary);
+        }
+
+        .discount-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            z-index: 5;
+        }
+
+        .product-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-brand {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .product-name {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            line-height: 1.4;
+            min-height: 40px;
+        }
+
+        .price-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .product-price {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .view-btn {
+            flex: 1;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 0;
+            text-decoration: none;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 400;
+            transition: all 0.2s ease;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .view-btn:hover {
+            background: var(--text-primary);
+            color: var(--card-bg);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: var(--text-secondary);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .collection-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .like-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 10px 24px;
+            border-radius: 0;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .like-btn:hover {
+            border-color: var(--text-primary);
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        .like-btn.liked {
+            border-color: #ff4444;
+            background: #ff4444;
+            color: var(--bg-primary);
+        }
+
+        .like-icon {
+            font-size: 18px;
+        }
+
+        .likes-count {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Eski fiyat üstü çizili stili */
+        .product-old-price {
+            color: var(--text-secondary);
+            text-decoration: line-through;
+            text-decoration-color: #ff6b6b;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/dashboard" class="logo">miayis</a>
+            <div class="header-search">
+                <input type="text" id="header-search-input" placeholder="LINK" autocomplete="off">
+                <button type="button" id="header-search-btn" class="header-search-btn" title="Ürün Ekle">➤</button>
+                <!-- Uploading / Progress Bar -->
+                <div class="header-upload-progress" id="header-upload-progress">
+                    <div class="header-upload-progress-bar" id="header-upload-progress-bar"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                {% if current_user.is_authenticated %}
+                <nav class="nav-links">
+                    <a href="/profile/favorites" class="favorites-link" title="Favorilerim">
+                        💟
+                    </a>
+                    <a href="/collections" class="nav-btn nav-icon-link" title="Koleksiyonlar">
+                        🗂️
+                    </a>
+                    <a href="/price-tracking" class="nav-btn nav-icon-link" title="Fiyat Takibi">
+                        🏷️
+                    </a>
+                    <div class="notification-dropdown">
+                        <button id="notification-btn" class="notification-btn" title="Bildirimler">
+                            <span class="notification-icon">🔔</span>
+                            <span id="notification-badge" class="notification-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-content" id="notification-content">
+                            <div class="notification-header">
+                                <h3>Bildirimler</h3>
+                                <button id="mark-all-read" class="mark-all-read">Tümünü Okundu İşaretle</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <div class="no-notifications">Henüz bildirim yok</div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/users" class="nav-btn nav-icon-link" title="Kullanıcılar">
+                        👥
+                    </a>
+                    <button id="theme-toggle" class="theme-toggle" title="Tema Değiştir">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </nav>
+                <div class="profile-dropdown">
+                    <button class="profile-btn" id="profile-btn">
+                        <span class="profile-icon">
+                            <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profil">
+                        </span>
+                        <span class="profile-name">{{ current_user.username }}</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="profile-dropdown-content" id="profile-dropdown">
+                        <a href="/profile" class="dropdown-item">👤 Profilim</a>
+                        <a href="/profile/favorites" class="dropdown-item">💟 Favorilerim</a>
+                        <a href="/profile/collections" class="dropdown-item">🗂️ Koleksiyonlarım</a>
+                        <a href="/admin/brands" class="dropdown-item">🏷️ Marka Yönetimi</a>
+                        <a href="/profile/import-issues" class="dropdown-item">⚠️ Hatalar</a>
+                        <a href="/profile/preferences" class="dropdown-item">🎨 Tercihlerim</a>
+                        <a href="/profile/settings" class="dropdown-item">⚙️ Hesap Bilgilerim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/logout" class="dropdown-item logout-item">🚪 Çıkış Yap</a>
+                    </div>
+                </div>
+                {% else %}
+                <nav class="nav-links">
+                    <a href="/login" class="nav-btn">GİRİŞ YAP</a>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="collection-header">
+            <div class="collection-header-top">
+                <div>
+                    <h1 class="collection-name">{{ collection.name }}</h1>
+                    {% if collection.description %}
+                    <p class="collection-desc">{{ collection.description }}</p>
+                    {% endif %}
+                    <div class="collection-meta">
+                        <div class="meta-item">
+                            <span>{{ products|length }} ÜRÜN</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="collection-owner">{{ user.username }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>{{ collection_created_at_str }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="collection-actions">
+                    {% if current_user.is_authenticated %}
+                    <button class="like-btn {% if is_liked %}liked{% endif %}" 
+                            id="like-btn" 
+                            data-collection-id="{{ collection.id }}">
+                        <span class="like-icon">{% if is_liked %}❤️{% else %}🤍{% endif %}</span>
+                        <span class="likes-count" id="likes-count">{{ likes_count }}</span>
+                    </button>
+                    {% else %}
+                    <div class="like-btn" style="cursor: default;">
+                        <span class="like-icon">🤍</span>
+                        <span class="likes-count">{{ likes_count }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if products %}
+        <div class="products-grid">
+            {% for product in products %}
+            <div class="product-card">
+                <div class="product-image-container">
+                    <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDI4MCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyODAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjhGOEY4Ii8+CjxwYXRoIGQ9Ik0xNDAgMTQwTDEwMCAxMDBIMTgwTDE0MCAxNDBaIiBmaWxsPSIjQ0NDIi8+Cjx0ZXh0IHg9IjE0MCIgeT0iMTYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiPkfDvHJzZWwgWXVrbMO8PC90ZXh0Pgo8L3N2Zz4K'">
+                    {% if product.discount_percentage %}
+                    <div class="discount-badge">%{{ product.discount_percentage }}</div>
+                    {% endif %}
+                </div>
+                <div class="product-info">
+                    <div class="product-brand">{{ product.brand }}</div>
+                    <h3 class="product-name">{{ product.name }}</h3>
+                    <div class="price-container">
+                        {% if product.old_price and product.old_price != product.price %}
+                        <span class="product-old-price">{{ product.old_price }}</span>
+                        {% endif %}
+                        <span class="product-price">{{ product.price }}</span>
+                    </div>
+                    <div class="product-actions">
+                        <a href="{{ product.url }}" target="_blank" class="view-btn">ÜRÜNE GİT</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Bu koleksiyonda henüz ürün yok</h3>
+            <p>Koleksiyon sahibi henüz ürün eklememiş</p>
+        </div>
+        {% endif %}
+    </main>
+
+    <script>
+        // Header functionality
+        const headerSearchInput = document.getElementById('header-search-input');
+        const headerSearchBtn = document.getElementById('header-search-btn');
+
+        function addProductFromHeader() {
+            if (!headerSearchInput) return;
+            const url = headerSearchInput.value.trim();
+            if (!url) {
+                alert('Lütfen bir URL girin');
+                return;
+            }
+            window.location.href = `/dashboard?url=${encodeURIComponent(url)}`;
+        }
+
+        if (headerSearchBtn) {
+            headerSearchBtn.addEventListener('click', addProductFromHeader);
+        }
+
+        if (headerSearchInput) {
+            headerSearchInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    addProductFromHeader();
+                }
+            });
+        }
+
+        // Profile dropdown
+        const profileBtn = document.getElementById('profile-btn');
+        const profileDropdown = document.getElementById('profile-dropdown');
+
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('show');
+                profileBtn.closest('.profile-dropdown').classList.toggle('active');
+            });
+        }
+
+        // Close profile dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (profileDropdown && profileBtn && !e.target.closest('.profile-dropdown')) {
+                profileDropdown.classList.remove('show');
+                profileBtn.closest('.profile-dropdown').classList.remove('active');
+            }
+        });
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.querySelector('.theme-icon');
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (themeIcon) {
+            updateThemeIcon(savedTheme);
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function () {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                if (themeIcon) {
+                    updateThemeIcon(newTheme);
+                }
+            });
+        }
+
+        function updateThemeIcon(theme) {
+            if (!themeIcon) return;
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+        }
+
+        // Notifications
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationContent = document.getElementById('notification-content');
+
+        // Varsayılan olarak kapalı olduğundan emin ol
+        if (notificationContent) {
+            notificationContent.classList.remove('show');
+            notificationContent.style.display = 'none';
+        }
+
+        if (notificationBtn && notificationContent) {
+            notificationBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isVisible = notificationContent.style.display === 'block' || notificationContent.classList.contains('show');
+                if (isVisible) {
+                    notificationContent.style.display = 'none';
+                    notificationContent.classList.remove('show');
+                } else {
+                    notificationContent.style.display = 'block';
+                    notificationContent.classList.add('show');
+                    loadNotifications();
+                }
+            });
+
+            // Dışarı tıklandığında kapat
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.notification-dropdown')) {
+                    notificationContent.style.display = 'none';
+                    notificationContent.classList.remove('show');
+                }
+            });
+        }
+
+        function loadNotifications() {
+            fetch('/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateNotificationBadge(data.unread_count);
+                        updateNotificationList(data.notifications);
+                    }
+                })
+                .catch(error => console.error('Bildirim yükleme hatası:', error));
+        }
+
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notification-badge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function updateNotificationList(notifications) {
+            const list = document.getElementById('notification-list');
+            if (!list) return;
+            if (notifications.length === 0) {
+                list.innerHTML = '<div class="no-notifications">Henüz bildirim yok</div>';
+                return;
+            }
+            list.innerHTML = '';
+            notifications.forEach(notification => {
+                const item = document.createElement('div');
+                item.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
+                item.innerHTML = `
+                    <div class="icon">${getNotificationIcon(notification.type)}</div>
+                    <div class="content">
+                        <div class="message">${notification.message}</div>
+                        <div class="timestamp">${notification.timestamp}</div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function getNotificationIcon(type) {
+            switch (type) {
+                case 'price_drop': return '📉';
+                case 'price_increase': return '📈';
+                case 'price_alert': return '🚨';
+                case 'follow': return '👤';
+                case 'message': return '💬';
+                default: return '🔔';
+            }
+        }
+
+        // Mark all notifications as read
+        const markAllReadBtn = document.getElementById('mark-all-read');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch('/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateNotificationBadge(0);
+                        loadNotifications();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+
+        // Like functionality
+        {% if current_user.is_authenticated %}
+        const collectionId = '{{ collection.id }}';
+        const likeBtn = document.getElementById('like-btn');
+        const likesCountEl = document.getElementById('likes-count');
+        let isLiked = {{ 'true' if is_liked else 'false' }};
+        let likesCount = {{ likes_count }};
+        
+        if (likeBtn) {
+            likeBtn.addEventListener('click', async function() {
+                const btn = this;
+                const action = isLiked ? 'unlike' : 'like';
+                
+                try {
+                    const response = await fetch(`/api/v1/collections/${collectionId}/${action}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isLiked = !isLiked;
+                        likesCount = data.likes_count;
+                        
+                        // Update button
+                        if (isLiked) {
+                            btn.classList.add('liked');
+                            btn.querySelector('.like-icon').textContent = '❤️';
+                        } else {
+                            btn.classList.remove('liked');
+                            btn.querySelector('.like-icon').textContent = '🤍';
+                        }
+                        
+                        // Update count
+                        if (likesCountEl) {
+                            likesCountEl.textContent = likesCount;
+                        }
+                    } else {
+                        alert(data.message || 'Bir hata oluştu');
+                    }
+                } catch (error) {
+                    console.error('Like error:', error);
+                    alert('Bir hata oluştu');
+                }
+            });
+        }
+        {% endif %}
+    </script>
+</body>
+</html> 

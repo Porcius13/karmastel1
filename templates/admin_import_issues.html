@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Problemli Ürünler</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/les-benjamins-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    <style>
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            letter-spacing: 0.1em;
+        }
+
+        .page-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .admin-nav {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .admin-nav a {
+            text-decoration: none;
+            color: var(--text-secondary);
+        }
+
+        .admin-nav a:hover {
+            color: var(--text-primary);
+        }
+
+        .issues-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            font-size: 13px;
+        }
+
+        .issues-table thead {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 11px;
+        }
+
+        .issues-table th,
+        .issues-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .issues-table th {
+            color: var(--text-secondary);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+        }
+
+        .status-failed {
+            border: 1px solid rgba(255, 68, 68, 0.6);
+            color: var(--error-text);
+        }
+
+        .status-partial {
+            border: 1px solid rgba(255, 193, 7, 0.6);
+            color: var(--text-primary);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-failed .status-dot {
+            background: #ff4444;
+        }
+
+        .status-partial .status-dot {
+            background: #ffc107;
+        }
+
+        .status-resolved {
+            border: 1px solid rgba(76, 175, 80, 0.6);
+            color: #4caf50;
+        }
+
+        .status-resolved .status-dot {
+            background: #4caf50;
+        }
+
+        .url-cell {
+            max-width: 260px;
+            word-break: break-all;
+        }
+
+        .reason-cell {
+            max-width: 380px;
+            white-space: pre-wrap;
+        }
+
+        .mono {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .badge-small {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .delete-issue-btn {
+            opacity: 0.5;
+        }
+
+        .delete-issue-btn:hover {
+            opacity: 1;
+            color: #ff4757;
+            transform: scale(1.1);
+        }
+    </style>
+    <script>
+        function applyFilters() {
+            const status = document.getElementById('status-filter').value;
+            const domain = document.getElementById('domain-filter').value.trim();
+            const category = document.getElementById('category-filter').value;
+            
+            // Client-side filtreleme (basit versiyon)
+            const rows = document.querySelectorAll('.issues-table tbody tr');
+            rows.forEach(row => {
+                let show = true;
+                
+                if (status !== 'all') {
+                    const statusText = row.querySelector('.status-pill')?.textContent.toLowerCase() || '';
+                    if (status === 'failed' && !statusText.includes('yüklenemedi')) show = false;
+                    if (status === 'partial' && !statusText.includes('eksik')) show = false;
+                }
+                
+                if (domain) {
+                    const domainText = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+                    if (!domainText.includes(domain.toLowerCase())) show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        document.getElementById('domain-filter')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // Delete issue function
+        function deleteIssue(issueId) {
+            if (!confirm('Bu hatayı silmek istediğinizden emin misiniz?')) {
+                return;
+            }
+
+            fetch(`/admin/import-issues/${issueId}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove the row from the table
+                    const row = document.getElementById(`issue-row-${issueId}`);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            // Reload page to update stats
+                            window.location.reload();
+                        }, 300);
+                    }
+                } else {
+                    alert('Hata kaydı silinirken bir sorun oluştu: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Hata kaydı silinirken bir sorun oluştu');
+            });
+        }
+    </script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">miayis</a>
+            <nav class="nav-links">
+                <a href="/dashboard" class="nav-btn">DASHBOARD</a>
+                <a href="/profile" class="nav-btn">PROFİL</a>
+                <a href="/logout" class="nav-btn">ÇIKIŞ</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">ADMIN / PROBLEMLİ ÜRÜNLER</h1>
+                <p class="page-subtitle">Eklenemeyen veya eksik bilgiyle yüklenen linklerin tam listesi</p>
+
+                <div class="admin-nav">
+                    <a href="{{ url_for('admin.users') }}">KULLANICILAR</a>
+                    <a href="{{ url_for('admin.products') }}">ÜRÜNLER</a>
+                    <a href="{{ url_for('admin.brands') }}">MARKALAR</a>
+                    <a href="{{ url_for('admin.import_issues') }}">PROBLEMLİ ÜRÜNLER</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- İstatistikler -->
+        {% if issues %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
+            <div style="padding: 15px; border: 1px solid var(--border-color); background: var(--card-bg);">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 6px;">TOPLAM</div>
+                <div style="font-size: 24px; font-weight: 600; color: var(--text-primary);">{{ issues|length }}</div>
+            </div>
+            <div style="padding: 15px; border: 1px solid var(--border-color); background: var(--card-bg);">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 6px;">BAŞARISIZ</div>
+                <div style="font-size: 24px; font-weight: 600; color: #ff4444;">{{ issues|selectattr('status', 'equalto', 'failed')|list|length }}</div>
+            </div>
+            <div style="padding: 15px; border: 1px solid var(--border-color); background: var(--card-bg);">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 6px;">EKSİK BİLGİ</div>
+                <div style="font-size: 24px; font-weight: 600; color: #ffc107;">{{ issues|selectattr('status', 'equalto', 'partial')|list|length }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Filtreleme -->
+        <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; padding: 15px; background: var(--card-bg); border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);">DURUM:</label>
+                <select id="status-filter" style="padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 12px; cursor: pointer;">
+                    <option value="all">TÜMÜ</option>
+                    <option value="failed">BAŞARISIZ</option>
+                    <option value="partial">EKSİK BİLGİ</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);">DOMAİN:</label>
+                <input type="text" id="domain-filter" placeholder="trendyol.com" style="padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 12px; min-width: 180px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);">HATA TİPİ:</label>
+                <select id="category-filter" style="padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 12px; cursor: pointer;">
+                    <option value="">TÜMÜ</option>
+                    <option value="network">AĞ HATASI</option>
+                    <option value="access">ERİŞİM HATASI</option>
+                    <option value="data">VERİ EKSİKLİĞİ</option>
+                    <option value="parsing">PARSE HATASI</option>
+                    <option value="url">URL HATASI</option>
+                </select>
+            </div>
+            <button onclick="applyFilters()" style="padding: 6px 14px; border: 1px solid var(--text-primary); background: transparent; color: var(--text-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;">
+                FİLTRELE
+            </button>
+        </div>
+
+        {% if issues %}
+            <table class="issues-table">
+                <thead>
+                    <tr>
+                        <th>TARİH</th>
+                        <th>KULLANICI</th>
+                        <th>DURUM</th>
+                        <th>DOMAİN</th>
+                        <th>ÜRÜN LİNKİ</th>
+                        <th>HATA KODU</th>
+                        <th>DENEME</th>
+                        <th>AÇIKLAMA</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in issues %}
+                    <tr id="issue-row-{{ issue.id }}">
+                        <td>
+                            {{ issue.created_at }}
+                            <div class="badge-small">
+                                {{ loop.index }} / {{ issues|length }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if issue.username %}
+                                {{ issue.username }} <span class="mono">({{ issue.user_id }})</span>
+                            {% else %}
+                                <span class="mono">{{ issue.user_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-pill status-{{ issue.status }}">
+                                <span class="status-dot"></span>
+                                {% if issue.status == 'failed' %}
+                                    YÜKLENEMEDİ
+                                {% elif issue.status == 'partial' %}
+                                    EKSİK BİLGİ
+                                {% else %}
+                                    {{ issue.status|upper }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if issue.domain %}
+                                <span class="mono" style="font-size: 11px; color: var(--text-secondary);">{{ issue.domain }}</span>
+                            {% else %}
+                                <span style="color: var(--text-secondary); font-size: 11px;">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="url-cell mono">
+                            <a href="{{ issue.url }}" target="_blank" style="word-break: break-all;">{{ issue.url }}</a>
+                        </td>
+                        <td>
+                            {% if issue.error_code %}
+                                <div class="mono" style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">{{ issue.error_code }}</div>
+                                {% if issue.error_category %}
+                                <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);">
+                                    {{ issue.error_category }}
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: var(--text-secondary); font-size: 11px;">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if issue.retry_count and issue.retry_count > 0 %}
+                                <span style="font-size: 12px; color: var(--text-primary); font-weight: 600;">{{ issue.retry_count }}x</span>
+                            {% else %}
+                                <span style="color: var(--text-secondary); font-size: 11px;">1x</span>
+                            {% endif %}
+                        </td>
+                        <td class="reason-cell">
+                            {{ issue.reason_text or issue.reason or 'Detaylı bilgi yok' }}
+                        </td>
+                        <td>
+                            <button 
+                                onclick="deleteIssue('{{ issue.id }}')" 
+                                class="delete-issue-btn"
+                                title="Hatayı sil"
+                                style="background: transparent; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 4px 8px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;">
+                                ×
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                Şu anda problemli ürün kaydı bulunmuyor.
+                <br>
+                <span class="badge-small">Eklenemeyen linkler burada listelenecek</span>
+            </div>
+        {% endif %}
+    </main>
+</body>
+</html>
+
+
+

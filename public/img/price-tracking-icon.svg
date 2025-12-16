@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Receipt outline -->
+  <rect x="16" y="10" width="32" height="44" rx="2.5" ry="2.5" stroke="black" stroke-width="2.5" fill="none"/>
+  <!-- Top hanger -->
+  <path d="M32 6V14" stroke="black" stroke-width="2.5" stroke-linecap="round"/>
+  <rect x="28" y="14" width="8" height="8" rx="1.5" ry="1.5" stroke="black" stroke-width="2.5" fill="none"/>
+  <!-- Zigzag bottom of receipt -->
+  <path d="M16 38L20 42L24 38L28 42L32 38L36 42L40 38L44 42L48 38" stroke="black" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Price chart line -->
+  <path d="M21 22L26 30L34 25L41 31" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Price tag dot -->
+  <circle cx="41" cy="31" r="2" fill="black"/>
+</svg>
+

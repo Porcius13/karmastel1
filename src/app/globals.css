@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Les Benjamins inspired color palette - Minimalist Black & White */
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafafa;
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --border-color: #e5e5e5;
+  --accent-color: #000000;
+  --accent-hover: #333333;
+  --card-bg: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.05);
+  --success-bg: #f0f0f0;
+  --success-text: #000000;
+  --error-bg: #f0f0f0;
+  --error-text: #000000;
+  --gradient-primary: #000000;
+  --gradient-secondary: #000000;
+  --glass-bg: rgba(255, 255, 255, 1);
+  --glass-border: rgba(0, 0, 0, 0.1);
+
+  /* Added missing variables */
+  --border-radius: 12px;
+
+  /* Defaults for tailwind compat if needed */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* --background: #0a0a0a;
+    --foreground: #ededed; */
+  }
+}
+
+/* Theme Attributes for Dark Mode Toggle */
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --text-primary: #ffffff;
+  --text-secondary: #999999;
+  --border-color: #333333;
+  --accent-color: #ffffff;
+  --accent-hover: #cccccc;
+  --card-bg: #0a0a0a;
+  --shadow: rgba(255, 255, 255, 0.05);
+  --success-bg: #1a1a1a;
+  --success-text: #ffffff;
+  --error-bg: #1a1a1a;
+  --error-text: #ffffff;
+  --gradient-primary: #ffffff;
+  --gradient-secondary: #ffffff;
+  --glass-bg: rgba(0, 0, 0, 1);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}

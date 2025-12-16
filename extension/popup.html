@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Saver</title>
+    <!-- Tailwind CDN for instant styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { width: 320px; height: auto; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans p-4">
+    
+    <div class="text-center mb-4">
+        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+            Wishlist Tracker
+        </h1>
+        <p class="text-xs text-gray-500">Save this page to your list</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main" class="space-y-3">
+        <button id="saveBtn" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-blue-500 active:scale-95 flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Current Page
+        </button>
+    </div>
+
+    <!-- Status Area -->
+    <div id="status" class="mt-4 hidden text-center p-3 rounded-lg text-sm font-medium"></div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!-- Header -->
+<header class="header">
+    <div class="header-content">
+        <a href="/dashboard" class="logo">miayis</a>
+        <div class="header-search">
+            <input type="text" id="header-search-input" placeholder="LINK" autocomplete="off">
+            <button type="button" id="header-search-btn" class="header-search-btn" title="Ürün Ekle">➤</button>
+            <!-- Uploading / Progress Bar -->
+            <div class="header-upload-progress" id="header-upload-progress">
+                <div class="header-upload-progress-bar" id="header-upload-progress-bar"></div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <nav class="nav-links">
+                <a href="/profile/favorites" class="favorites-link" title="Favorilerim">
+                    💟
+                </a>
+                <a href="/collections" class="nav-btn nav-icon-link" title="Koleksiyonlar">
+                    🗂️
+                </a>
+                <a href="/price-tracking" class="nav-btn nav-icon-link" title="Fiyat Takibi">
+                    🏷️
+                </a>
+                <a href="/messages" class="nav-btn nav-icon-link" title="Mesajlar">
+                    💬
+                </a>
+                <div class="notification-dropdown">
+                    <button id="notification-btn" class="notification-btn" title="Bildirimler">
+                        <span class="notification-icon">🔔</span>
+                        <span id="notification-badge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+                    <div class="notification-content" id="notification-content">
+                        <div class="notification-header">
+                            <h3>Bildirimler</h3>
+                            <button id="mark-all-read" class="mark-all-read">Tümünü Okundu İşaretle</button>
+                        </div>
+                        <div class="notification-list" id="notification-list">
+                            <div class="no-notifications">Henüz bildirim yok</div>
+                        </div>
+                    </div>
+                </div>
+                <a href="/users" class="nav-btn nav-icon-link" title="Kullanıcılar">
+                    👥
+                </a>
+                <button id="theme-toggle" class="theme-toggle" title="Tema Değiştir">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </nav>
+            <div class="profile-dropdown">
+                <button class="profile-btn" id="profile-btn">
+                    <span class="profile-icon">
+                        <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profil">
+                    </span>
+                    <span class="profile-name">{{ current_user.username }}</span>
+                    <span class="dropdown-arrow">▼</span>
+                </button>
+                <div class="profile-dropdown-content" id="profile-dropdown">
+                    <a href="/profile" class="dropdown-item">👤 Profilim</a>
+                    <a href="/profile/favorites" class="dropdown-item">💟 Favorilerim</a>
+                    <a href="/profile/collections" class="dropdown-item">🗂️ Koleksiyonlarım</a>
+                    <a href="/admin/brands" class="dropdown-item">🏷️ Marka Yönetimi</a>
+                    <a href="/profile/import-issues" class="dropdown-item">⚠️ Hatalar</a>
+                    <a href="/profile/preferences" class="dropdown-item">🎨 Tercihlerim</a>
+                    <a href="/profile/settings" class="dropdown-item">⚙️ Hesap Bilgilerim</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="/logout" class="dropdown-item logout-item">🚪 Çıkış Yap</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+

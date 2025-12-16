@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeni Koleksiyon Oluştur - miayis</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap');
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product-cards.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    <style>
+        :root {
+            /* Les Benjamins inspired color palette - Minimalist Black & White */
+            --bg-primary: #ffffff;
+            --bg-secondary: #fafafa;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border-color: #e5e5e5;
+            --accent-color: #000000;
+            --accent-hover: #333333;
+            --card-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --success-bg: #f0f0f0;
+            --success-text: #000000;
+            --error-bg: #f0f0f0;
+            --error-text: #000000;
+            --gradient-primary: #000000;
+            --gradient-secondary: #000000;
+            --glass-bg: rgba(255, 255, 255, 1);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #999999;
+            --border-color: #333333;
+            --accent-color: #ffffff;
+            --accent-hover: #cccccc;
+            --card-bg: #0a0a0a;
+            --shadow: rgba(255, 255, 255, 0.05);
+            --success-bg: #1a1a1a;
+            --success-text: #ffffff;
+            --error-bg: #1a1a1a;
+            --error-text: #ffffff;
+            --gradient-primary: #ffffff;
+            --gradient-secondary: #ffffff;
+            --glass-bg: rgba(0, 0, 0, 1);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Touch-friendly improvements */
+        button,
+        a,
+        input,
+        select,
+        textarea {
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+            position: relative;
+            overflow-x: hidden;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .logo {
+            font-family: 'Alkatra', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 28px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s ease;
+            text-transform: none;
+        }
+
+        .logo:hover {
+            opacity: 0.6;
+        }
+
+        .header-search {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 40px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-upload-progress {
+            position: absolute;
+            left: 0;
+            right: 40px;
+            bottom: -4px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border-radius: 999px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .header-upload-progress.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .header-upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #000000, #555555);
+            transform-origin: left center;
+            transition: width 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress-bar {
+            background: linear-gradient(90deg, #ffffff, #999999);
+        }
+
+        .header-search input {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            background: transparent;
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+            font-weight: 400;
+        }
+
+        .header-search input:focus {
+            outline: none;
+            border-bottom-color: var(--text-primary);
+        }
+
+        .header-search input::placeholder {
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+
+        .header-search-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+            min-width: auto;
+        }
+
+        .header-search-btn:hover {
+            opacity: 0.6;
+            transform: translateY(-2px);
+        }
+
+        .header-search-btn:active {
+            transform: translateY(0);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .favorites-link,
+        .nav-icon-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 20px;
+            width: 28px;
+            height: 28px;
+            transition: opacity 0.2s ease;
+        }
+
+        .favorites-link:hover,
+        .nav-icon-link:hover {
+            opacity: 0.6;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 12px;
+            font-weight: 400;
+            text-decoration: none;
+        }
+
+        .nav-btn:hover {
+            opacity: 0.6;
+        }
+
+        .notification-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .notification-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            position: relative;
+            color: var(--text-primary);
+        }
+
+        .notification-btn:hover {
+            opacity: 0.6;
+        }
+
+        .notification-icon {
+            font-size: 20px;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification-content {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: var(--card-bg);
+            min-width: 350px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 0;
+            z-index: 10000;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .notification-content.show {
+            display: block;
+        }
+
+        .notification-dropdown .notification-content {
+            right: 0;
+            left: auto;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notification-header h3 {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .mark-all-read {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 0;
+            font-size: 10px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .mark-all-read:hover {
+            background: var(--text-primary);
+            color: var(--card-bg);
+        }
+
+        .notification-list {
+            padding: 15px 20px;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item .icon {
+            font-size: 20px;
+            color: var(--accent-color);
+        }
+
+        .notification-item .message {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .notification-item .timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .notification-item.unread {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px 10px;
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.6;
+        }
+
+        .theme-icon {
+            transition: transform 0.3s ease;
+            line-height: 1;
+        }
+
+        [data-theme="dark"] .theme-icon {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            height: 28px;
+        }
+
+        .profile-btn:hover {
+            opacity: 0.6;
+        }
+
+        .profile-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .profile-icon img {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .profile-name {
+            font-weight: 600;
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-dropdown.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            min-width: 200px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .profile-dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--glass-border);
+            margin: 8px 0;
+        }
+
+        .logout-item {
+            color: #ff4757;
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .welcome-section {
+            text-align: left;
+            margin-bottom: 60px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            position: relative;
+            overflow: visible;
+        }
+
+        .welcome-title {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .welcome-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .form-header {
+            margin-bottom: 40px;
+            text-align: left;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            color: var(--text-primary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 16px;
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-bottom-color: var(--text-primary);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input[type="file"].form-control {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        input[type="file"].form-control::file-selector-button {
+            display: none;
+        }
+
+        .file-hint {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--text-primary);
+        }
+
+        .form-check-label {
+            font-size: 14px;
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 0;
+            font-weight: 400;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: transparent;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .btn:hover {
+            opacity: 0.6;
+        }
+
+        .btn-primary {
+            border-bottom-color: var(--text-primary);
+        }
+
+        .btn-secondary {
+            opacity: 0.6;
+        }
+
+        .btn-secondary:hover {
+            opacity: 1;
+        }
+
+        .flash-messages {
+            margin-bottom: 40px;
+        }
+
+        .flash-message {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 0;
+            font-weight: 400;
+            font-size: 14px;
+        }
+
+        .flash-success {
+            color: var(--text-primary);
+        }
+
+        .flash-error {
+            color: var(--text-primary);
+        }
+
+        .cover-preview {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .cover-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 15px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .header-search {
+                margin: 0 15px;
+                order: 3;
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .header-actions {
+                gap: 10px;
+            }
+
+            .main-content {
+                padding: 40px 15px;
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .notification-content {
+                min-width: 300px;
+                max-width: 90vw;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/dashboard" class="logo">miayis</a>
+            <div class="header-search">
+                <input type="text" id="header-search-input" placeholder="LINK" autocomplete="off">
+                <button type="button" id="header-search-btn" class="header-search-btn" title="Ürün Ekle">➤</button>
+                <!-- Uploading / Progress Bar -->
+                <div class="header-upload-progress" id="header-upload-progress">
+                    <div class="header-upload-progress-bar" id="header-upload-progress-bar"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <nav class="nav-links">
+                    <a href="/profile/favorites" class="favorites-link" title="Favorilerim">
+                        💟
+                    </a>
+                    <a href="/collections" class="nav-btn nav-icon-link" title="Koleksiyonlar">
+                        🗂️
+                    </a>
+                    <a href="/price-tracking" class="nav-btn nav-icon-link" title="Fiyat Takibi">
+                        🏷️
+                    </a>
+                    <div class="notification-dropdown">
+                        <button id="notification-btn" class="notification-btn" title="Bildirimler">
+                            <span class="notification-icon">🔔</span>
+                            <span id="notification-badge" class="notification-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-content" id="notification-content">
+                            <div class="notification-header">
+                                <h3>Bildirimler</h3>
+                                <button id="mark-all-read" class="mark-all-read">Tümünü Okundu İşaretle</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <div class="no-notifications">Henüz bildirim yok</div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/users" class="nav-btn nav-icon-link" title="Kullanıcılar">
+                        👥
+                    </a>
+                    <button id="theme-toggle" class="theme-toggle" title="Tema Değiştir">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </nav>
+                <div class="profile-dropdown">
+                    <button class="profile-btn" id="profile-btn">
+                        <span class="profile-icon">
+                            <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profil">
+                        </span>
+                        <span class="profile-name">{{ current_user.username }}</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="profile-dropdown-content" id="profile-dropdown">
+                        <a href="/profile" class="dropdown-item">👤 Profilim</a>
+                        <a href="/profile/favorites" class="dropdown-item">💟 Favorilerim</a>
+                        <a href="/profile/collections" class="dropdown-item">🗂️ Koleksiyonlarım</a>
+                        <a href="/admin/brands" class="dropdown-item">🏷️ Marka Yönetimi</a>
+                        <a href="/profile/import-issues" class="dropdown-item">⚠️ Hatalar</a>
+                        <a href="/profile/preferences" class="dropdown-item">🎨 Tercihlerim</a>
+                        <a href="/profile/settings" class="dropdown-item">⚙️ Hesap Bilgilerim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/logout" class="dropdown-item logout-item">🚪 Çıkış Yap</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="welcome-section">
+            <h1 class="welcome-title">Yeni Koleksiyon Oluştur</h1>
+            <p class="welcome-subtitle">Favori ürünlerinizi organize edin</p>
+        </div>
+
+        <div class="form-card">
+            <form method="POST" action="{{ url_for('collections_ui.create') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="cover_image" class="form-label">Kapak Fotoğrafı</label>
+                    <input type="file" class="form-control" id="cover_image" name="cover_image" accept="image/*">
+                    <div class="file-hint">PNG, JPG, JPEG veya WEBP formatında bir görsel seçin</div>
+                    <div id="cover-preview" class="cover-preview" style="display: none;">
+                        <img id="cover-preview-img" src="" alt="Kapak önizleme">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="name" class="form-label">Koleksiyon Adı</label>
+                    <input type="text" class="form-control" id="name" name="name" required
+                        placeholder="Örn: Yazlık Kıyafetler">
+                </div>
+
+                <div class="form-group">
+                    <label for="description" class="form-label">Açıklama</label>
+                    <textarea class="form-control" id="description" name="description" rows="3"
+                        placeholder="Koleksiyonunuz hakkında kısa bir açıklama..."></textarea>
+                </div>
+
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="is_public" name="is_public">
+                    <label class="form-check-label" for="is_public">Herkese Açık (Profilinizde görünür)</label>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{{ url_for('profile.collections') }}" class="btn btn-secondary">İptal</a>
+                    <button type="submit" class="btn btn-primary">Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Profile dropdown toggle
+        const profileBtn = document.getElementById('profile-btn');
+        const profileDropdown = document.querySelector('.profile-dropdown');
+        const profileDropdownContent = document.getElementById('profile-dropdown');
+        
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('active');
+                if (profileDropdownContent) {
+                    profileDropdownContent.classList.toggle('show');
+                }
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.profile-dropdown')) {
+                    profileDropdown.classList.remove('active');
+                    if (profileDropdownContent) {
+                        profileDropdownContent.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        // Notification dropdown toggle
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationContent = document.getElementById('notification-content');
+        
+        if (notificationBtn && notificationContent) {
+            notificationBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationContent.classList.toggle('show');
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.notification-dropdown')) {
+                    notificationContent.classList.remove('show');
+                }
+            });
+        }
+
+        // Mark all read functionality
+        const markAllReadBtn = document.getElementById('mark-all-read');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch('/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload notifications
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking all as read:', error);
+                });
+            });
+        }
+
+        // Load notifications
+        function loadNotifications() {
+            const notificationList = document.getElementById('notification-list');
+            const notificationBadge = document.getElementById('notification-badge');
+            
+            if (!notificationList) return;
+            
+            fetch('/notifications/list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.notifications) {
+                        const notifications = data.notifications;
+                        
+                        // Update badge
+                        if (notificationBadge) {
+                            const unreadCount = notifications.filter(n => !n.read).length;
+                            if (unreadCount > 0) {
+                                notificationBadge.textContent = unreadCount;
+                                notificationBadge.style.display = 'flex';
+                            } else {
+                                notificationBadge.style.display = 'none';
+                            }
+                        }
+                        
+                        // Update notification list
+                        if (notifications.length === 0) {
+                            notificationList.innerHTML = '<div class="no-notifications">Henüz bildirim yok</div>';
+                        } else {
+                            notificationList.innerHTML = notifications.map(notif => `
+                                <div class="notification-item ${notif.read ? '' : 'unread'}">
+                                    <span class="icon">${notif.type === 'price_drop' ? '💰' : '🔔'}</span>
+                                    <div>
+                                        <div class="message">${notif.message}</div>
+                                        <div class="timestamp">${notif.created_at}</div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                });
+        }
+
+        // Load notifications on page load
+        loadNotifications();
+        
+        // Refresh notifications every 30 seconds
+        setInterval(loadNotifications, 30000);
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function() {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+
+        // Header search functionality
+        const headerSearchInput = document.getElementById('header-search-input');
+        const headerSearchBtn = document.getElementById('header-search-btn');
+        
+        if (headerSearchBtn && headerSearchInput) {
+            headerSearchBtn.addEventListener('click', function() {
+                const url = headerSearchInput.value.trim();
+                if (url) {
+                    window.location.href = '/dashboard?url=' + encodeURIComponent(url);
+                }
+            });
+            
+            headerSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    headerSearchBtn.click();
+                }
+            });
+        }
+
+        // Kapak fotoğrafı önizleme
+        const coverImageInput = document.getElementById('cover_image');
+        const coverPreview = document.getElementById('cover-preview');
+        const coverPreviewImg = document.getElementById('cover-preview-img');
+
+        if (coverImageInput) {
+            coverImageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        coverPreviewImg.src = e.target.result;
+                        coverPreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    coverPreview.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Kayıt Ol - miayis</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Alkatra:wght@400;600&display=swap');
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/les-benjamins-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    
+    <style>
+        /* Les Benjamins Register Page Specific Styles */
+        body {
+            min-height: 100vh;
+        }
+        
+        /* Header - Les Benjamins Style */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+        
+        .logo {
+            font-family: 'Alkatra', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 28px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s ease;
+            text-transform: none;
+        }
+        
+        .logo:hover {
+            opacity: 0.6;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+        
+        .auth-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .auth-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        
+        .auth-btn.primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        
+        .auth-btn.primary:hover {
+            background: var(--text-secondary);
+            border-color: var(--text-secondary);
+        }
+        
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 0;
+            font-size: 18px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        
+        .theme-toggle:hover {
+            opacity: 0.6;
+        }
+        
+        /* Main Content */
+        .main-content {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 20px 40px;
+            position: relative;
+        }
+        
+        /* Register Form - Les Benjamins Style */
+        .register-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 60px 50px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: none;
+            transition: all 0.3s ease;
+        }
+        
+        .register-container:hover {
+            border-color: var(--text-primary);
+        }
+        
+        .register-header {
+            text-align: left;
+            margin-bottom: 40px;
+        }
+        
+        .register-title {
+            font-size: 24px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .register-subtitle {
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .form-group {
+            margin-bottom: 30px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            color: var(--text-primary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 12px;
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+            font-weight: 400;
+            /* Üyelik bilgileri normal yazılsın; sadece label/placeholder uppercase kalsın */
+            text-transform: none;
+            letter-spacing: 0.02em;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-bottom-color: var(--text-primary);
+        }
+        
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 0;
+            font-size: 12px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+            font-family: inherit;
+        }
+        
+        .submit-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        
+        .register-footer {
+            text-align: left;
+            margin-top: 30px;
+        }
+        
+        .register-footer p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .register-footer a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 400;
+            transition: opacity 0.2s ease;
+        }
+        
+        .register-footer a:hover {
+            opacity: 0.6;
+        }
+        
+        /* Flash Messages - Les Benjamins Style */
+        .flash-messages {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 300px;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .flash-message {
+            padding: 12px 16px;
+            border-radius: 0;
+            margin-bottom: 0;
+            font-weight: 400;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+            border-left: 2px solid var(--text-primary);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        
+        .flash-message.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .flash-success,
+        .flash-error,
+        .flash-warning,
+        .flash-info {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-left: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 20px;
+                height: 60px;
+            }
+
+            .header-actions {
+                gap: 20px;
+            }
+
+            .auth-btn {
+                padding: 6px 12px;
+                font-size: 10px;
+            }
+            
+            .main-content {
+                padding: 80px 20px 40px;
+            }
+            
+            .register-container {
+                padding: 40px 30px;
+            }
+            
+            .register-title {
+                font-size: 20px;
+            }
+
+            .register-subtitle {
+                font-size: 11px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header-content {
+                padding: 0 15px;
+            }
+
+            .header-actions {
+                gap: 15px;
+            }
+
+            .auth-btn {
+                padding: 5px 10px;
+                font-size: 9px;
+            }
+
+            .main-content {
+                padding: 70px 15px 30px;
+            }
+            
+            .register-container {
+                padding: 30px 20px;
+            }
+            
+            .register-title {
+                font-size: 18px;
+            }
+
+            .register-subtitle {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">miayis</a>
+            <div class="header-actions">
+                <button id="theme-toggle" class="theme-toggle" title="Tema Değiştir">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <a href="/login" class="auth-btn">LOG IN</a>
+                <a href="/register" class="auth-btn primary">SIGN UP</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="register-container">
+            <div class="register-header">
+                <h1 class="register-title">Kayıt Ol</h1>
+                <p class="register-subtitle">Yeni hesap oluşturun</p>
+            </div>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">Kullanıcı Adı</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">E-posta</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Şifre</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required autocomplete="new-password">
+                        <button type="button" class="password-toggle" data-target="password">GÖSTER</button>
+                    </div>
+                    <div id="password-strength" style="margin-top: 8px; display: none;">
+                        <div style="height: 4px; background: var(--border-color); width: 100%; margin-bottom: 5px;">
+                            <div id="password-strength-bar" style="height: 100%; width: 0%; transition: all 0.3s ease;"></div>
+                        </div>
+                        <div id="password-strength-text" style="font-size: 10px; color: var(--text-secondary); text-transform: none;"></div>
+                        <ul id="password-requirements" style="list-style: none; padding: 0; margin: 8px 0 0 0; font-size: 10px; text-transform: none;">
+                            <li id="req-length" style="color: var(--text-secondary); margin: 4px 0;">✓ En az 8 karakter</li>
+                            <li id="req-upper" style="color: var(--text-secondary); margin: 4px 0;">✓ Büyük harf</li>
+                            <li id="req-lower" style="color: var(--text-secondary); margin: 4px 0;">✓ Küçük harf</li>
+                            <li id="req-number" style="color: var(--text-secondary); margin: 4px 0;">✓ Rakam</li>
+                            <li id="req-special" style="color: var(--text-secondary); margin: 4px 0;">✓ Özel karakter</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">Şifre Tekrar</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+                        <button type="button" class="password-toggle" data-target="confirm_password">GÖSTER</button>
+                    </div>
+                    <div id="password-match" style="margin-top: 8px; font-size: 10px; color: var(--text-secondary); text-transform: none; display: none;"></div>
+                </div>
+                
+                <button type="submit" class="submit-btn">Kayıt Ol</button>
+            </form>
+            
+            <div class="register-footer">
+                <p>Zaten hesabınız var mı? <a href="/login">Giriş Yap</a></p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggles = document.querySelectorAll('.password-toggle');
+            toggles.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    if (!input) return;
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+                    btn.textContent = isPassword ? 'GİZLE' : 'GÖSTER';
+                });
+            });
+            
+            // Password strength checker
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirm_password');
+            const strengthDiv = document.getElementById('password-strength');
+            const strengthBar = document.getElementById('password-strength-bar');
+            const strengthText = document.getElementById('password-strength-text');
+            const matchDiv = document.getElementById('password-match');
+            
+            function checkPasswordStrength(password) {
+                if (!password) {
+                    strengthDiv.style.display = 'none';
+                    return;
+                }
+                
+                strengthDiv.style.display = 'block';
+                
+                let score = 0;
+                const checks = {
+                    length: password.length >= 8,
+                    upper: /[A-Z]/.test(password),
+                    lower: /[a-z]/.test(password),
+                    number: /\d/.test(password),
+                    special: /[!@#$%^&*()_+\-=\[\]{};'\\:"|,.<>\/?]/.test(password)
+                };
+                
+                // Update requirement indicators
+                document.getElementById('req-length').style.color = checks.length ? '#4caf50' : 'var(--text-secondary)';
+                document.getElementById('req-upper').style.color = checks.upper ? '#4caf50' : 'var(--text-secondary)';
+                document.getElementById('req-lower').style.color = checks.lower ? '#4caf50' : 'var(--text-secondary)';
+                document.getElementById('req-number').style.color = checks.number ? '#4caf50' : 'var(--text-secondary)';
+                document.getElementById('req-special').style.color = checks.special ? '#4caf50' : 'var(--text-secondary)';
+                
+                // Calculate score
+                if (checks.length) score += 20;
+                if (checks.upper) score += 20;
+                if (checks.lower) score += 20;
+                if (checks.number) score += 20;
+                if (checks.special) score += 20;
+                
+                // Length bonus
+                if (password.length >= 12) score += 10;
+                if (password.length >= 16) score += 10;
+                
+                strengthBar.style.width = score + '%';
+                
+                if (score < 30) {
+                    strengthBar.style.background = '#f44336';
+                    strengthText.textContent = 'Çok Zayıf';
+                    strengthText.style.color = '#f44336';
+                } else if (score < 50) {
+                    strengthBar.style.background = '#ff9800';
+                    strengthText.textContent = 'Zayıf';
+                    strengthText.style.color = '#ff9800';
+                } else if (score < 70) {
+                    strengthBar.style.background = '#ffc107';
+                    strengthText.textContent = 'Orta';
+                    strengthText.style.color = '#ffc107';
+                } else if (score < 85) {
+                    strengthBar.style.background = '#8bc34a';
+                    strengthText.textContent = 'Güçlü';
+                    strengthText.style.color = '#8bc34a';
+                } else {
+                    strengthBar.style.background = '#4caf50';
+                    strengthText.textContent = 'Çok Güçlü';
+                    strengthText.style.color = '#4caf50';
+                }
+            }
+            
+            function checkPasswordMatch() {
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                
+                if (!confirmPassword) {
+                    matchDiv.style.display = 'none';
+                    return;
+                }
+                
+                matchDiv.style.display = 'block';
+                
+                if (password === confirmPassword) {
+                    matchDiv.textContent = '✓ Şifreler eşleşiyor';
+                    matchDiv.style.color = '#4caf50';
+                } else {
+                    matchDiv.textContent = '✗ Şifreler eşleşmiyor';
+                    matchDiv.style.color = '#f44336';
+                }
+            }
+            
+            passwordInput.addEventListener('input', (e) => {
+                checkPasswordStrength(e.target.value);
+                checkPasswordMatch();
+            });
+            
+            confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+            
+            // Form validation
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    const password = passwordInput.value;
+                    const confirmPassword = confirmPasswordInput.value;
+                    
+                    if (password !== confirmPassword) {
+                        e.preventDefault();
+                        alert('Şifreler eşleşmiyor!');
+                        return false;
+                    }
+                    
+                    // Basic validation
+                    if (password.length < 8) {
+                        e.preventDefault();
+                        alert('Şifre en az 8 karakter olmalıdır!');
+                        return false;
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        // Dark mode functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.querySelector('.theme-icon');
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+        
+        // Theme toggle
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+        
+        function updateThemeIcon(theme) {
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+        }
+    </script>
+</body>
+</html> 

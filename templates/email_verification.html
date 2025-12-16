@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Email Doğrulama - miayis</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/les-benjamins-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .verification-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 60px 50px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .verification-icon {
+            font-size: 64px;
+            margin-bottom: 30px;
+        }
+        
+        .verification-title {
+            font-size: 24px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .verification-message {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .verification-success {
+            color: #4caf50;
+        }
+        
+        .verification-error {
+            color: #f44336;
+        }
+        
+        .login-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            text-decoration: none;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s ease;
+        }
+        
+        .login-link:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        
+        @media (max-width: 768px) {
+            .verification-container {
+                padding: 40px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        {% if success %}
+            <div class="verification-icon">✅</div>
+            <h1 class="verification-title verification-success">Doğrulama Başarılı</h1>
+            <p class="verification-message">{{ message }}</p>
+            <a href="{{ url_for('auth.login_page') }}" class="login-link">Giriş Yap</a>
+        {% else %}
+            <div class="verification-icon">❌</div>
+            <h1 class="verification-title verification-error">Doğrulama Başarısız</h1>
+            <p class="verification-message">{{ message }}</p>
+            <a href="{{ url_for('auth.login_page') }}" class="login-link">Giriş Sayfasına Dön</a>
+        {% endif %}
+    </div>
+</body>
+</html>

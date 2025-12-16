@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesajlar - miayis</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&family=Alkatra:wght@400;600&display=swap');
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product-cards.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
+    <style>
+        :root {
+            /* Les Benjamins inspired color palette - Minimalist Black & White */
+            --bg-primary: #ffffff;
+            --bg-secondary: #fafafa;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border-color: #e5e5e5;
+            --accent-color: #000000;
+            --accent-hover: #333333;
+            --card-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --success-bg: #f0f0f0;
+            --success-text: #000000;
+            --error-bg: #f0f0f0;
+            --error-text: #000000;
+            --gradient-primary: #000000;
+            --gradient-secondary: #000000;
+            --glass-bg: rgba(255, 255, 255, 1);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #999999;
+            --border-color: #333333;
+            --accent-color: #ffffff;
+            --accent-hover: #cccccc;
+            --card-bg: #0a0a0a;
+            --shadow: rgba(255, 255, 255, 0.05);
+            --success-bg: #1a1a1a;
+            --success-text: #ffffff;
+            --error-bg: #1a1a1a;
+            --error-text: #ffffff;
+            --gradient-primary: #ffffff;
+            --gradient-secondary: #ffffff;
+            --glass-bg: rgba(0, 0, 0, 1);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Touch-friendly improvements */
+        button,
+        a,
+        input,
+        select,
+        textarea {
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+            position: relative;
+            overflow-x: hidden;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .logo {
+            font-family: 'Alkatra', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 28px;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s ease;
+            text-transform: none;
+        }
+
+        .logo:hover {
+            opacity: 0.6;
+        }
+
+        .header-search {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 40px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-upload-progress {
+            position: absolute;
+            left: 0;
+            right: 40px;
+            bottom: -4px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border-radius: 999px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .header-upload-progress.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .header-upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #000000, #555555);
+            transform-origin: left center;
+            transition: width 0.25s ease;
+        }
+
+        [data-theme="dark"] .header-upload-progress-bar {
+            background: linear-gradient(90deg, #ffffff, #999999);
+        }
+
+        .header-search input {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            background: transparent;
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+            font-weight: 400;
+        }
+
+        .header-search input:focus {
+            outline: none;
+            border-bottom-color: var(--text-primary);
+        }
+
+        .header-search input::placeholder {
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+
+        .header-search-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+            min-width: auto;
+        }
+
+        .header-search-btn:hover {
+            opacity: 0.6;
+            transform: translateY(-2px);
+        }
+
+        .header-search-btn:active {
+            transform: translateY(0);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .favorites-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 20px;
+            width: 28px;
+            height: 28px;
+            transition: opacity 0.2s ease;
+        }
+
+        .favorites-link:hover {
+            opacity: 0.6;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0;
+            font-size: 12px;
+            font-weight: 400;
+            text-decoration: none;
+        }
+
+        .nav-btn:hover {
+            opacity: 0.6;
+        }
+
+        .nav-icon-link {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-icon-link:hover {
+            opacity: 0.6;
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.6;
+        }
+
+        .theme-icon {
+            transition: transform 0.3s ease;
+            line-height: 1;
+        }
+
+        [data-theme="dark"] .theme-icon {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            height: 28px;
+        }
+
+        .profile-btn:hover {
+            opacity: 0.6;
+        }
+
+        .profile-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .profile-icon img {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .profile-name {
+            font-weight: 600;
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-dropdown.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .profile-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            min-width: 200px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .profile-dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 5px 0;
+        }
+
+        .notification-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .notification-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            position: relative;
+            color: var(--text-primary);
+        }
+
+        .notification-btn:hover {
+            opacity: 0.6;
+        }
+
+        .notification-icon {
+            font-size: 20px;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification-content {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: var(--card-bg);
+            min-width: 350px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 0;
+            z-index: 10000;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .notification-content.show {
+            display: block;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .notification-header h3 {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .mark-all-read {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 0;
+            font-size: 10px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .mark-all-read:hover {
+            background: var(--text-primary);
+            color: var(--card-bg);
+        }
+
+        .notification-list {
+            padding: 15px 20px;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item .icon {
+            font-size: 20px;
+            color: var(--accent-color);
+        }
+
+        .notification-item .message {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .notification-item .timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .notification-item.unread {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px 10px;
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        /* Messages specific styles */
+        .messages-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+            display: flex;
+            gap: 20px;
+            min-height: calc(100vh - 200px);
+        }
+
+        .conversations-list {
+            width: 350px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .conversations-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            z-index: 10;
+        }
+
+        .conversations-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 14px;
+        }
+
+        .unread-badge {
+            display: inline-block;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+
+        .conversation-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .conversation-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .conversation-item.active {
+            background: var(--bg-secondary);
+        }
+
+        .conversation-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conversation-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-preview {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .conversation-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .conversation-unread {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .messages-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .messages-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .messages-empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .messages-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .messages-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .messages-header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .messages-header-name {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .mark-read-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .mark-read-btn:hover {
+            background: var(--text-primary);
+            color: var(--card-bg);
+        }
+
+        .messages-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 70%;
+            align-self: flex-start;
+        }
+
+        .message-item.sent {
+            align-self: flex-end;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message-item.sent .message-bubble {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 0 4px;
+        }
+
+        .message-input-area {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .send-message-btn {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .send-message-btn:hover {
+            opacity: 0.8;
+        }
+
+        .send-message-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 15px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .header-search {
+                margin: 0 15px;
+                order: 3;
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .header-actions {
+                gap: 10px;
+            }
+
+            .messages-container {
+                flex-direction: column;
+                padding: 20px;
+                min-height: auto;
+            }
+
+            .conversations-list {
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .messages-view {
+                height: 500px;
+            }
+
+            .message-item {
+                max-width: 85%;
+            }
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/dashboard" class="logo">miayis</a>
+            <div class="header-search">
+                <input type="text" id="header-search-input" placeholder="LINK" autocomplete="off">
+                <button type="button" id="header-search-btn" class="header-search-btn" title="Ürün Ekle">➤</button>
+                <!-- Uploading / Progress Bar -->
+                <div class="header-upload-progress" id="header-upload-progress">
+                    <div class="header-upload-progress-bar" id="header-upload-progress-bar"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <nav class="nav-links">
+                    <a href="/profile/favorites" class="favorites-link" title="Favorilerim">
+                        💟
+                    </a>
+                    <a href="/collections" class="nav-btn nav-icon-link" title="Koleksiyonlar">
+                        🗂️
+                    </a>
+                    <a href="/price-tracking" class="nav-btn nav-icon-link" title="Fiyat Takibi">
+                        🏷️
+                    </a>
+                    <a href="/messages" class="nav-btn nav-icon-link" title="Mesajlar">
+                        💬
+                    </a>
+                    <div class="notification-dropdown">
+                        <button id="notification-btn" class="notification-btn" title="Bildirimler">
+                            <span class="notification-icon">🔔</span>
+                            <span id="notification-badge" class="notification-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-content" id="notification-content">
+                            <div class="notification-header">
+                                <h3>Bildirimler</h3>
+                                <button id="mark-all-read" class="mark-all-read">Tümünü Okundu İşaretle</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <div class="no-notifications">Henüz bildirim yok</div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/users" class="nav-btn nav-icon-link" title="Kullanıcılar">
+                        👥
+                    </a>
+                    <button id="theme-toggle" class="theme-toggle" title="Tema Değiştir">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </nav>
+                <div class="profile-dropdown">
+                    <button class="profile-btn" id="profile-btn">
+                        <span class="profile-icon">
+                            <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profil">
+                        </span>
+                        <span class="profile-name">{{ current_user.username }}</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="profile-dropdown-content" id="profile-dropdown">
+                        <a href="/profile" class="dropdown-item">👤 Profilim</a>
+                        <a href="/profile/favorites" class="dropdown-item">💟 Favorilerim</a>
+                        <a href="/profile/collections" class="dropdown-item">🗂️ Koleksiyonlarım</a>
+                        <a href="/admin/brands" class="dropdown-item">🏷️ Marka Yönetimi</a>
+                        <a href="/profile/import-issues" class="dropdown-item">⚠️ Hatalar</a>
+                        <a href="/profile/preferences" class="dropdown-item">🎨 Tercihlerim</a>
+                        <a href="/profile/settings" class="dropdown-item">⚙️ Hesap Bilgilerim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/logout" class="dropdown-item logout-item">🚪 Çıkış Yap</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="messages-container">
+            <div class="conversations-list">
+                <div class="conversations-header">
+                    <h2>Mesajlar <span id="total-unread" class="unread-badge" style="display: none;">0</span></h2>
+                </div>
+                <div id="conversations-list" class="conversations-list-content">
+                    <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                        Yükleniyor...
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-view" id="messages-view">
+                <div class="messages-empty">
+                    <div class="messages-empty-icon">💬</div>
+                    <h3>Bir konuşma seçin</h3>
+                    <p>Mesajlarınızı görmek için soldan bir konuşma seçin</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let conversations = [];
+        let currentConversationId = null;
+        let socket = null;
+
+        // Profile dropdown functionality
+        const profileBtn = document.getElementById('profile-btn');
+        const profileDropdown = document.getElementById('profile-dropdown');
+
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('show');
+                profileBtn.classList.toggle('active');
+            });
+        }
+
+        // Close profile dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (profileDropdown && profileBtn && !e.target.closest('.profile-dropdown')) {
+                profileDropdown.classList.remove('show');
+                profileBtn.classList.remove('active');
+            }
+        });
+
+        // Dark mode functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.querySelector('.theme-icon');
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (themeIcon) {
+            updateThemeIcon(savedTheme);
+        }
+
+        // Theme toggle
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function () {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                if (themeIcon) {
+                    updateThemeIcon(newTheme);
+                }
+            });
+        }
+
+        function updateThemeIcon(theme) {
+            if (!themeIcon) return;
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+        }
+
+        // Notification system
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationContent = document.getElementById('notification-content');
+        const notificationBadge = document.getElementById('notification-badge');
+        const notificationList = document.getElementById('notification-list');
+        const markAllReadBtn = document.getElementById('mark-all-read');
+
+        // Load notifications
+        function loadNotifications() {
+            fetch('/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateNotificationBadge(data.unread_count);
+                        updateNotificationList(data.notifications);
+                    }
+                })
+                .catch(error => {
+                    console.error('Bildirim yükleme hatası:', error);
+                });
+        }
+
+        // Update notification badge
+        function updateNotificationBadge(count) {
+            if (!notificationBadge) return;
+            if (count > 0) {
+                notificationBadge.textContent = count;
+                notificationBadge.style.display = 'flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+
+        // Update notification list
+        function updateNotificationList(notifications) {
+            if (!notificationList) return;
+            if (notifications.length === 0) {
+                notificationList.innerHTML = '<div class="no-notifications">Henüz bildirim yok</div>';
+                return;
+            }
+
+            notificationList.innerHTML = '';
+            notifications.forEach(notification => {
+                const notificationItem = document.createElement('div');
+                notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
+                notificationItem.innerHTML = `
+                    <div class="icon">${getNotificationIcon(notification.type)}</div>
+                    <div class="content">
+                        <div class="message">${notification.message}</div>
+                        <div class="timestamp">${formatTime(notification.timestamp)}</div>
+                    </div>
+                `;
+                notificationList.appendChild(notificationItem);
+            });
+        }
+
+        // Get notification icon
+        function getNotificationIcon(type) {
+            switch (type) {
+                case 'price_drop':
+                    return '📉';
+                case 'price_increase':
+                    return '📈';
+                case 'price_alert':
+                    return '🚨';
+                case 'follow':
+                    return '👤';
+                case 'message':
+                    return '💬';
+                default:
+                    return '🔔';
+            }
+        }
+
+        // Notification dropdown toggle
+        if (notificationBtn && notificationContent) {
+            notificationBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                notificationContent.classList.toggle('show');
+                loadNotifications();
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.notification-dropdown')) {
+                    notificationContent.classList.remove('show');
+                }
+            });
+        }
+
+        // Mark all as read
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function () {
+                fetch('/notifications/mark-all-read', {
+                    method: 'POST'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadNotifications();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Bildirim işaretleme hatası:', error);
+                    });
+            });
+        }
+
+        // Header search functionality
+        const headerSearchInput = document.getElementById('header-search-input');
+        const headerSearchBtn = document.getElementById('header-search-btn');
+
+        if (headerSearchBtn && headerSearchInput) {
+            headerSearchBtn.addEventListener('click', function() {
+                const url = headerSearchInput.value.trim();
+                if (url) {
+                    window.location.href = `/dashboard?url=${encodeURIComponent(url)}`;
+                }
+            });
+
+            headerSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    headerSearchBtn.click();
+                }
+            });
+        }
+
+        // SocketIO bağlantısı
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load initial notifications
+            loadNotifications();
+
+            // SocketIO bağlantısını kontrol et
+            if (typeof io !== 'undefined') {
+                socket = io();
+                
+                socket.on('connect', function() {
+                    console.log('SocketIO connected');
+                });
+
+                socket.on('notification', function(data) {
+                    if (data.type === 'message') {
+                        // Yeni mesaj geldiğinde konuşmaları yenile
+                        loadConversations();
+                        loadNotifications();
+                    } else {
+                        loadNotifications();
+                    }
+                });
+            }
+
+            loadConversations();
+        });
+
+        async function loadConversations() {
+            try {
+                console.log('[DEBUG] Loading conversations...');
+                
+                // Debug endpoint'i de çağır
+                try {
+                    const debugResponse = await fetch('/api/v1/messages/debug');
+                    const debugData = await debugResponse.json();
+                    console.log('[DEBUG] Debug endpoint response:', debugData);
+                    console.log('[DEBUG] Total notifications:', debugData.total_notifications);
+                    console.log('[DEBUG] Notification types:', debugData.notifications?.map(n => n.type) || []);
+                } catch (debugError) {
+                    console.error('[DEBUG] Debug endpoint error:', debugError);
+                }
+                
+                const response = await fetch('/api/v1/messages');
+                const data = await response.json();
+                
+                console.log('[DEBUG] API Response:', data);
+                console.log('[DEBUG] Conversations count:', data.conversations ? data.conversations.length : 0);
+
+                if (data.success) {
+                    conversations = data.conversations;
+                    console.log('[DEBUG] Conversations:', conversations);
+                    renderConversations();
+                    
+                    // Okunmamış sayısını güncelle
+                    const totalUnread = data.total_unread;
+                    const unreadBadge = document.getElementById('total-unread');
+                    if (totalUnread > 0) {
+                        unreadBadge.textContent = totalUnread;
+                        unreadBadge.style.display = 'inline-block';
+                    } else {
+                        unreadBadge.style.display = 'none';
+                    }
+                } else {
+                    console.error('[DEBUG] API returned error:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+
+        function renderConversations() {
+            const listContainer = document.getElementById('conversations-list');
+            
+            if (conversations.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">💬</div>
+                        <p>Henüz mesajınız yok</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = conversations.map(conv => {
+                const lastMessage = conv.messages[0];
+                const time = formatTime(lastMessage.created_at);
+                const preview = lastMessage.text.length > 40 
+                    ? lastMessage.text.substring(0, 40) + '...' 
+                    : lastMessage.text;
+
+                return `
+                    <div class="conversation-item ${currentConversationId === conv.user_id ? 'active' : ''}" 
+                         onclick="loadConversation('${conv.user_id}', '${conv.username}')">
+                        <div class="conversation-avatar">${conv.username.charAt(0).toUpperCase()}</div>
+                        <div class="conversation-info">
+                            <div class="conversation-name">${escapeHtml(conv.username)}</div>
+                            <div class="conversation-preview">${escapeHtml(preview)}</div>
+                        </div>
+                        <div class="conversation-meta">
+                            <div class="conversation-time">${time}</div>
+                            ${conv.unread_count > 0 ? `<div class="conversation-unread">${conv.unread_count}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadConversation(userId, username) {
+            currentConversationId = userId;
+            renderConversations();
+
+            try {
+                const response = await fetch(`/api/v1/messages/${userId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderMessages(data.messages, username, userId);
+                }
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+            }
+        }
+
+        function renderMessages(messages, username, userId) {
+            const messagesView = document.getElementById('messages-view');
+            
+            messagesView.innerHTML = `
+                <div class="messages-header">
+                    <div class="messages-header-info">
+                        <div class="messages-header-avatar">${username.charAt(0).toUpperCase()}</div>
+                        <div class="messages-header-name">${escapeHtml(username)}</div>
+                    </div>
+                    <button class="mark-read-btn" onclick="markConversationRead('${userId}')">Okundu İşaretle</button>
+                </div>
+                <div class="messages-list" id="messages-list">
+                    ${messages.map(msg => {
+                        const time = formatTime(msg.created_at);
+                        // Mesajın gönderilen mi alınan mı olduğunu kontrol et
+                        // sent flag'i varsa ve true ise, bu mesaj gönderilmiştir
+                        const isSent = msg.sent === true;
+                        return `
+                            <div class="message-item ${isSent ? 'sent' : ''}">
+                                <div class="message-bubble">${escapeHtml(msg.text)}</div>
+                                <div class="message-time">${time}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="message-input-area">
+                    <textarea class="message-input" id="message-input" 
+                              placeholder="Mesajınızı yazın..." 
+                              rows="1"></textarea>
+                    <button class="send-message-btn" onclick="sendMessage('${userId}')">Gönder</button>
+                </div>
+            `;
+
+            // Mesaj listesini en alta kaydır
+            const messagesList = document.getElementById('messages-list');
+            messagesList.scrollTop = messagesList.scrollHeight;
+
+            // Enter ile mesaj gönderme
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage(userId);
+                }
+            });
+
+            // Textarea otomatik yükseklik ayarı
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        }
+
+        async function sendMessage(userId) {
+            const messageInput = document.getElementById('message-input');
+            const messageText = messageInput.value.trim();
+
+            if (!messageText) return;
+
+            const sendBtn = document.querySelector('.send-message-btn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Gönderiliyor...';
+
+            try {
+                const response = await fetch(`/api/v1/users/${userId}/message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: messageText })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    messageInput.value = '';
+                    messageInput.style.height = 'auto';
+                    
+                    // Mesaj gönderildikten sonra konuşmaları ve mevcut konuşmayı yeniden yükle
+                    // Kısa bir bekleme backend'de notification'ların oluşturulması için
+                    console.log('[DEBUG] Message sent successfully, reloading conversations...');
+                    
+                    // İlk olarak kısa bir bekleme
+                    setTimeout(async () => {
+                        console.log('[DEBUG] Reloading conversations after message send...');
+                        await loadConversations();
+                        
+                        // Mevcut konuşmayı da yenile
+                        const headerName = document.querySelector('.messages-header-name');
+                        if (headerName) {
+                            console.log('[DEBUG] Reloading conversation with:', userId);
+                            await loadConversation(userId, headerName.textContent);
+                        }
+                    }, 800); // Biraz daha uzun bekleme süresi
+                } else {
+                    alert(data.message || 'Mesaj gönderilemedi');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('Bir hata oluştu');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Gönder';
+            }
+        }
+
+        async function markConversationRead(userId) {
+            try {
+                const response = await fetch(`/api/v1/messages/${userId}/mark-read`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Konuşmaları yenile
+                    loadConversations();
+                    // Mevcut konuşmayı da yenile
+                    if (currentConversationId === userId) {
+                        const username = document.querySelector('.messages-header-name').textContent;
+                        await loadConversation(userId, username);
+                    }
+                }
+            } catch (error) {
+                console.error('Error marking conversation read:', error);
+            }
+        }
+
+        function formatTime(timeString) {
+            const date = new Date(timeString);
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return 'Az önce';
+            if (minutes < 60) return `${minutes} dk önce`;
+            if (hours < 24) return `${hours} saat önce`;
+            if (days < 7) return `${days} gün önce`;
+            
+            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 30 saniyede bir konuşmaları yenile
+        setInterval(loadConversations, 30000);
+        // 30 saniyede bir bildirimleri yenile
+        setInterval(loadNotifications, 30000);
+    </script>
+</body>
+
+</html>
