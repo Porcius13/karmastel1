@@ -42,10 +42,12 @@ async function getBrowser() {
         const chromium = (await import('@sparticuz/chromium')).default;
         const puppeteerCore = (await import('puppeteer-core')).default;
 
+        chromium.setGraphicsMode = false;
+
         return await puppeteerCore.launch({
             args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
             defaultViewport: { width: 1920, height: 1080 },
-            executablePath: await chromium.executablePath(),
+            executablePath: await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"),
             headless: true,
         });
     } else {
