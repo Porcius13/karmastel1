@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
         // Wait for potential dynamic content (optional but safe)
         try {
-            await page.waitForTimeout(2000);
+            await new Promise(resolve => setTimeout(resolve, 2000));
         } catch (e) { }
 
         // --- DEEP SCAN EVALUATION ---
