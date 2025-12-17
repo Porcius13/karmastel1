@@ -16,20 +16,30 @@ import {
     Infinity as InfinityIcon
 } from 'lucide-react';
 
-export default function Sidebar({ className, isCollapsed }: { className?: string, isCollapsed?: boolean }) {
+interface SidebarProps {
+    className?: string;
+    isCollapsed?: boolean;
+    collections?: string[];
+    activeCollection?: string;
+    onSelectCollection?: (collection: string | null) => void;
+    onAddCollection?: () => void;
+}
+
+export default function Sidebar({
+    className,
+    isCollapsed,
+    collections = [],
+    activeCollection,
+    onSelectCollection,
+    onAddCollection
+}: SidebarProps) {
     const pathname = usePathname();
 
     const menuItems = [
-        { name: 'All Items', icon: List, href: '/' },
+        { name: 'All Items', icon: List, href: '/', action: () => onSelectCollection?.(null) },
         { name: 'Favorites', icon: Heart, href: '/favorites' },
         { name: 'Purchased', icon: ShoppingBag, href: '/purchased' },
         { name: 'Archived', icon: Archive, href: '/archived' },
-    ];
-
-    const tags = [
-        { name: 'Tech', count: 12 },
-        { name: 'Clothes', count: 5 },
-        { name: 'Home', count: 3 },
     ];
 
     return (
@@ -62,14 +72,16 @@ export default function Sidebar({ className, isCollapsed }: { className?: string
             <nav className={`flex-1 py-6 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${isCollapsed ? 'px-2' : 'px-4'}`}>
 
                 <div className="mb-8">
-                    <button className={`
+                    <button
+                        onClick={onAddCollection}
+                        className={`
                         flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all border border-white/5 group
                         ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full p-3'}
-                    `} title={isCollapsed ? "Add New Link" : undefined}>
+                    `} title={isCollapsed ? "Add New Collection" : undefined}>
                         <div className={`w-6 h-6 rounded-full bg-primary flex items-center justify-center text-black shrink-0 ${isCollapsed ? '' : ''}`}>
                             <Plus size={16} />
                         </div>
-                        {!isCollapsed && <span className="font-medium text-sm whitespace-nowrap">Add New Link</span>}
+                        {!isCollapsed && <span className="font-medium text-sm whitespace-nowrap">Add Collection</span>}
                     </button>
                 </div>
 
@@ -77,14 +89,22 @@ export default function Sidebar({ className, isCollapsed }: { className?: string
                     {!isCollapsed && <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">Menu</h3>}
 
                     {menuItems.map((item) => {
-                        const isActive = pathname === item.href;
+                        const isActive = item.name === 'All Items' ? (!activeCollection && pathname === '/') : pathname === item.href;
+
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
+                                onClick={(e) => {
+                                    if (item.action) {
+                                        // Prevent default only if we stay on same page
+                                        if (pathname === '/') e.preventDefault();
+                                        item.action();
+                                    }
+                                }}
                                 title={isCollapsed ? item.name : undefined}
                                 className={`
-                                    flex items-center gap-3 rounded-lg transition-all duration-200 group
+                                    flex items-center gap-3 rounded-lg transition-all duration-200 group cursor-pointer
                                     ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
                                     ${isActive
                                         ? 'bg-primary text-black font-medium shadow-lg shadow-primary/20'
@@ -95,11 +115,6 @@ export default function Sidebar({ className, isCollapsed }: { className?: string
                                 {!isCollapsed && (
                                     <>
                                         <span className="whitespace-nowrap">{item.name}</span>
-                                        {item.name === 'All Items' && (
-                                            <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
-                                                24
-                                            </span>
-                                        )}
                                     </>
                                 )}
                             </Link>
@@ -109,20 +124,24 @@ export default function Sidebar({ className, isCollapsed }: { className?: string
 
                 <div className={`mt-8 space-y-1 ${isCollapsed ? 'hidden' : 'block'}`}>
                     <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center justify-between whitespace-nowrap">
-                        <span>Tags</span>
-                        <button className="hover:text-white transition-colors"><Plus size={14} /></button>
+                        <span>Collections</span>
+                        <button onClick={onAddCollection} className="hover:text-white transition-colors"><Plus size={14} /></button>
                     </h3>
-                    {tags.map((tag) => (
-                        <Link
-                            key={tag.name}
-                            href={`/tag/${tag.name.toLowerCase()}`}
-                            className="flex items-center gap-3 px-3 py-2 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors group"
-                        >
-                            <Hash size={18} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                            <span className="text-sm whitespace-nowrap">{tag.name}</span>
-                            <span className="ml-auto text-xs opacity-50">{tag.count}</span>
-                        </Link>
-                    ))}
+                    {collections.map((col) => {
+                        const isColActive = activeCollection === col;
+                        return (
+                            <button
+                                key={col}
+                                onClick={() => onSelectCollection?.(col)}
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group
+                                ${isColActive ? 'bg-white/10 text-white' : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                            `}
+                            >
+                                <Hash size={18} className={`${isColActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'} transition-colors shrink-0`} />
+                                <span className="text-sm whitespace-nowrap">{col}</span>
+                            </button>
+                        )
+                    })}
                 </div>
             </nav>
 

@@ -20,11 +20,11 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { productId, productUrl, email } = body;
+        const { productId, productUrl, email, userId } = body;
 
-        if (!productId || !productUrl || !email) {
+        if (!productId || !productUrl || !email || !userId) {
             return NextResponse.json(
-                { success: false, error: "Missing required fields (productId, productUrl, email)" },
+                { success: false, error: "Missing required fields (productId, productUrl, email, userId)" },
                 { status: 400, headers: corsHeaders() }
             );
         }
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
             productId,
             productUrl,
             email,
+            userId,
             status: "pending",
             createdAt: serverTimestamp()
         });

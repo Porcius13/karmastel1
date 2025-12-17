@@ -18,14 +18,61 @@ import {
 
 import Sidebar from './Sidebar';
 
+import { useAuth } from '@/context/AuthContext';
+
 interface DashboardShellProps {
     children: React.ReactNode;
+    onSearch?: (query: string) => void;
+    collections?: string[];
+    activeCollection?: string;
+    onSelectCollection?: (collection: string | null) => void;
+    onAddCollection?: () => void;
 }
 
-export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
+export const DashboardShell: React.FC<DashboardShellProps> = ({
+    children,
+    onSearch,
+    collections,
+    activeCollection,
+    onSelectCollection,
+    onAddCollection
+}) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [productUrl, setProductUrl] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
     const pathname = usePathname();
+    const { user } = useAuth();
+
+    const handleUrlSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && productUrl.trim()) {
+            if (!user) {
+                alert("Please log in to add products.");
+                return;
+            }
+
+            setIsAdding(true);
+            try {
+                const res = await fetch('/api/add-product', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: productUrl, userId: user.uid })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setProductUrl('');
+                    // Optional: Show success toast
+                } else {
+                    alert(data.error || "Failed to add product");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An error occurred");
+            } finally {
+                setIsAdding(false);
+            }
+        }
+    };
 
     return (
         <div className="h-screen w-full bg-background font-sans text-white flex overflow-hidden selection:bg-primary selection:text-primary-foreground">
@@ -33,6 +80,10 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
             {/* 1. SIDEBAR (Desktop: Visible, Mobile: Hidden) */}
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
+                collections={collections}
+                activeCollection={activeCollection}
+                onSelectCollection={onSelectCollection}
+                onAddCollection={onAddCollection}
                 className={`
             fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out
             md:relative md:translate-x-0
@@ -70,22 +121,45 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
                         </button>
                     </div>
 
-                    {/* Center: Search/Paste Link Input */}
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search size={18} className="text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search your items..."
+                            onChange={(e) => onSearch && onSearch(e.target.value)}
+                            className="w-full bg-surface border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm"
+                        />
+                    </div>
+
+
+                    {/* Add Product Field */}
                     <div className="flex-1 max-w-2xl mx-auto hidden md:block group">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Search size={18} className="text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <span className="material-symbols-outlined text-muted-foreground group-focus-within:text-primary transition-colors text-[18px]">add_link</span>
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Paste a product link to track..."
-                                className="w-full bg-surface border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm"
-                            />
-                            <kbd className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                                <span className="text-[10px] font-mono text-muted-foreground bg-surfaceHighlight px-1.5 py-0.5 rounded border border-surfaceHighlight">CMD+K</span>
-                            </kbd>
                         </div>
+                        <input
+                            type="text"
+                            placeholder="Paste a product link to track..."
+                            value={productUrl}
+                            onChange={(e) => setProductUrl(e.target.value)}
+                            onKeyDown={handleUrlSubmit}
+                            disabled={isAdding}
+                            className="w-full bg-surface border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm disabled:opacity-50"
+                        />
+                        {isAdding && (
+                            <div className="absolute inset-y-0 right-12 flex items-center">
+                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        )}
+                        <kbd className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                            <span className="text-[10px] font-mono text-muted-foreground bg-surfaceHighlight px-1.5 py-0.5 rounded border border-surfaceHighlight">Enter</span>
+                        </kbd>
                     </div>
+
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2 md:gap-4 ml-auto">
@@ -99,13 +173,12 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
                     </div>
                 </header>
 
-                {/* 3. MAIN CONTENT AREA */}
+                {/* Main Content Wrapper */}
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
                     <div className="max-w-7xl mx-auto">
                         {children}
                     </div>
                 </main>
-
             </div>
         </div>
     );

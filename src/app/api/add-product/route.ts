@@ -22,11 +22,11 @@ export async function POST(request: Request) {
     let productData: any = {};
     let targetCollection = "products";
     const body = await request.json();
-    const { url } = body;
+    const { url, userId, collection: userCategory } = body;
 
-    if (!url) {
+    if (!url || !userId) {
         return NextResponse.json(
-            { success: false, error: "URL is required" },
+            { success: false, error: "URL and userId are required" },
             { status: 400, headers: corsHeaders() }
         );
     }
@@ -51,7 +51,9 @@ export async function POST(request: Request) {
             inStock: scraped.inStock,
             source: scraped.source || new URL(url).hostname.replace('www.', ''),
             status: 'active',
-            isScrapeFailed: false
+            isScrapeFailed: false,
+            userId: userId, // Ensure userId IS saved
+            collection: userCategory || 'Uncategorized'
         };
 
     } catch (scrapeError) {
@@ -68,7 +70,8 @@ export async function POST(request: Request) {
             error: true, // As requested
             isScrapeFailed: true, // Keeping for backward compatibility/clarity
             source: new URL(url).hostname.replace('www.', ''),
-            status: 'needs_review'
+            status: 'needs_review',
+            userId: userId
         };
     }
 
