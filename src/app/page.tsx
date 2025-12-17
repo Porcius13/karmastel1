@@ -1,335 +1,255 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, deleteDoc, updateDoc, doc } from "firebase/firestore";
 
-export default function Home() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [editingProduct, setEditingProduct] = useState<any>(null); // State for the product being edited
+import React from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import {
+    Puzzle,
+    FolderOpen,
+    BarChart3,
+    CheckCircle2,
+    Infinity as InfinityIcon,
+    ArrowRight,
+    Menu,
+    Activity
+} from 'lucide-react';
 
-  // Helper for price formatting
-  const formatFn = (p: any, c: any) => {
-    if (typeof p === 'number') {
-      return p.toLocaleString('tr-TR') + ' ' + (c || 'TL');
-    }
-    return (p || '0') + ' ' + (c || 'TL');
-  };
+export default function LandingPage() {
+    return (
+        <div className="min-h-screen bg-[#0F172A] text-white font-[family-name:var(--font-inter)] selection:bg-[#F9F506] selection:text-black overflow-x-hidden">
 
-  // Firestore Listener
-  useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          brand: data.source ? data.source.toUpperCase() : "MAĞAZA",
-          title: data.title || "İsimsiz Ürün",
-          price: formatFn(data.price, data.currency),
-          image: data.image || "https://placehold.co/600x600?text=No+Image",
-          aspect: "aspect-square", // Default aspect
-          createdAt: data.createdAt,
-          url: data.url,
-          // Store raw data for editing
-          rawPrice: data.price,
-          rawCurrency: data.currency
-        };
-      });
-      setProducts(items);
-      setInitialLoading(false);
-    }, (error) => {
-      console.error("Firestore listener error:", error);
-      setInitialLoading(false);
-    });
+            {/* 1. NAVBAR (Standalone) */}
+            <nav className="fixed top-0 w-full z-50 bg-[#0F172A]/80 backdrop-blur-xl border-b border-[#1E293B]/50">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[#F9F506] rounded-lg flex items-center justify-center text-black">
+                            <InfinityIcon size={20} />
+                        </div>
+                        <span className="text-xl font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</span>
+                    </div>
 
-    return () => unsubscribe();
-  }, []);
+                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+                        <Link href="#features" className="hover:text-white transition-colors">How it works</Link>
+                        <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
+                        <Link href="/login" className="text-white hover:text-[#F9F506] transition-colors">Sign In</Link>
+                        <Link
+                            href="/login"
+                            className="bg-[#F9F506] text-black px-5 py-2.5 rounded-full font-bold hover:bg-[#F9F506]/90 transition-transform hover:scale-105"
+                        >
+                            Get Started
+                        </Link>
+                    </div>
 
-  const handleAddProduct = async () => {
-    if (!url) return;
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/add-product', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
-      });
-
-      if (response.ok) {
-        // No need to manually setProducts, the onSnapshot listener will update the list
-        setUrl('');
-      } else {
-        const errorData = await response.json();
-        alert('Hata: ' + (errorData.error || 'Ürün eklenemedi'));
-      }
-    } catch (error) {
-      console.error('Network error:', error);
-      alert('Bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteProduct = async (id: string, e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent link click if wrapped
-    if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
-
-    try {
-      await deleteDoc(doc(db, "products", id));
-    } catch (error) {
-      console.error("Error removing document: ", error);
-      alert("Ürün silinirken bir hata oluştu.");
-    }
-  };
-
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-
-    try {
-      const productRef = doc(db, "products", editingProduct.id);
-      await updateDoc(productRef, {
-        title: editingProduct.title,
-        price: Number(editingProduct.rawPrice), // Ensure number
-        image: editingProduct.image,
-        url: editingProduct.url
-      });
-      setEditingProduct(null); // Close modal
-    } catch (error) {
-      console.error("Error updating document: ", error);
-      alert("Ürün güncellenirken bir hata oluştu.");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleAddProduct();
-    }
-  };
-
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "https://placehold.co/600x600?text=No+Image";
-  };
-
-  return (
-    <>
-      {/* Top Header / Action Bar */}
-      <header className="sticky top-0 z-40 px-8 py-6 bg-background-light/80 backdrop-blur-xl flex items-center justify-between gap-6 shrink-0 z-50">
-
-        {/* Search & Add Product */}
-        <div className="flex-1 max-w-2xl relative group">
-          <div className={`absolute inset-0 bg-primary/20 blur-xl rounded-full transition-opacity duration-500 ${loading ? 'opacity-100' : 'opacity-0'}`}></div>
-          <div className="relative flex items-center bg-white shadow-sm border border-[#f0f0eb] rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300 hover:shadow-md">
-            <span className="material-symbols-outlined text-gray-400 pl-4">search</span>
-            <input
-              className="w-full py-4 px-3 bg-transparent border-none outline-none text-text-main placeholder:text-text-secondary/50 font-medium"
-              placeholder="Bir ürün linki yapıştırın..."
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-            />
-            <button
-              onClick={handleAddProduct}
-              disabled={loading || !url}
-              className="m-1.5 p-2.5 rounded-xl bg-primary text-text-main hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-            >
-              {loading ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-              ) : (
-                <span className="material-symbols-outlined text-[20px]">add</span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Top Actions */}
-        <div className="flex items-center gap-3">
-          <button className="p-3 rounded-full hover:bg-white transition-colors text-text-secondary hover:text-text-main relative group">
-            <span className="material-symbols-outlined text-[24px]">notifications</span>
-            <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-background-light"></span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Scroll Area */}
-      <main className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-
-        {/* Filters */}
-        <div className="mb-8 flex items-center gap-3 overflow-x-auto py-2 scrollbar-hide">
-          <button className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-text-main text-white shadow-lg shadow-text-main/10 transition-transform active:scale-95">
-            <span className="text-sm font-semibold">Tümü</span>
-          </button>
-          {['Mobilya', 'Teknoloji', 'Giyim', 'Aksesuar', 'Kozmetik'].map((cat) => (
-            <button key={cat} className="px-6 py-2.5 rounded-full bg-white border border-[#f0f0eb] text-text-secondary hover:text-text-main hover:border-gray-300 transition-all whitespace-nowrap">
-              <span className="text-sm font-medium">{cat}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content State */}
-        {initialLoading ? (
-          <div className="flex flex-col items-center justify-center h-96 gap-4">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-text-secondary animate-pulse">Ürünler yükleniyor...</p>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-            <div className="bg-white p-8 rounded-full shadow-sm mb-6">
-              <span className="material-symbols-outlined text-6xl text-primary/80">inventory_2</span>
-            </div>
-            <h3 className="text-2xl font-bold text-text-main mb-2">Listeniz Boş</h3>
-            <p className="text-text-secondary max-w-md mx-auto leading-relaxed">
-              Henüz koleksiyonunuza bir parça eklemediniz. Yukarıdaki arama çubuğunu kullanarak beğendiğiniz ürünleri buraya taşıyın.
-            </p>
-          </div>
-        ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-            {products.map((product: any) => (
-              <div key={product.id} className="break-inside-avoid group relative flex flex-col bg-transparent">
-
-                {/* Image Card */}
-                <div className={"relative w-full overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-500 hover:shadow-xl " + (product.aspect || 'aspect-square')}>
-                  <img
-                    alt={product.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    src={product.image}
-                    onError={handleImageError}
-                  />
-
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                    <a href={product.url || '#'} target="_blank" rel="noopener noreferrer" className="bg-white text-text-main rounded-full p-4 transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 shadow-2xl hover:scale-110 hover:bg-primary z-10">
-                      <span className="material-symbols-outlined text-[24px]">arrow_outward</span>
-                    </a>
-                  </div>
-
-                  {/* Actions (Top Right) */}
-                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                    {/* Edit Button */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setEditingProduct({ ...product });
-                      }}
-                      className="bg-white/90 backdrop-blur p-2 rounded-full shadow-sm hover:bg-blue-50 hover:text-blue-500 transition-colors"
-                      title="Düzenle"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                    <button className="md:hidden text-white">
+                        <Menu size={24} />
                     </button>
-                    {/* Delete Button */}
-                    <button
-                      onClick={(e) => handleDeleteProduct(product.id, e)}
-                      className="bg-white/90 backdrop-blur p-2 rounded-full shadow-sm hover:bg-red-50 hover:text-red-500 transition-colors"
-                      title="Sil"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                  </div>
+                </div>
+            </nav>
 
-                  {/* Price Tag (Floating) */}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm">
-                    <span className="text-sm font-bold text-text-main">{product.price}</span>
-                  </div>
+            {/* 2. HERO SECTION */}
+            <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6">
+                {/* Background Gradients */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none">
+                    <div className="absolute top-20 left-20 w-[500px] h-[500px] bg-[#F9F506]/20 rounded-full blur-[120px] opacity-20 mix-blend-screen animate-pulse"></div>
+                    <div className="absolute top-40 right-20 w-[400px] h-[400px] bg-purple-500/20 rounded-full blur-[100px] opacity-20 mix-blend-screen"></div>
                 </div>
 
-                {/* Meta Info */}
-                <div className="mt-2 px-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[11px] font-bold text-primary tracking-wider uppercase bg-text-main/5 px-2 py-0.5 rounded-md">{product.brand}</p>
-                    <span className="text-[10px] text-text-secondary">{new Date(product.createdAt?.seconds * 1000).toLocaleDateString('tr-TR')}</span>
-                  </div>
-                  <h3 className="text-sm font-medium leading-snug text-text-main line-clamp-2 group-hover:text-primary transition-colors">{product.title}</h3>
+                <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10">
+
+                    {/* Text Content */}
+                    <div className="space-y-8 text-center lg:text-left">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1E293B] border border-[#1E293B] text-xs font-medium text-[#F9F506] tracking-wide uppercase">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F9F506] opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F9F506]"></span>
+                            </span>
+                            v2.0 is now live
+                        </div>
+
+                        <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[1.1] font-[family-name:Space_Grotesk]">
+                            Stop losing <br />
+                            your <span className="text-[#F9F506] decoration-wavy underline decoration-[#F9F506]/50 underline-offset-8">tabs</span>.
+                        </h1>
+
+                        <p className="text-xl text-slate-400 max-w-lg mx-auto lg:mx-0 leading-relaxed font-light">
+                            The universal wishlist for the modern web. Save products from any store, track prices automatically, and organize your digital life.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                            <Link
+                                href="/login"
+                                className="bg-[#F9F506] text-black px-8 py-4 rounded-full font-bold text-lg hover:shadow-[0_0_30px_-5px_#F9F506] transition-all hover:scale-[1.02]"
+                            >
+                                Get Extension
+                            </Link>
+                            <Link
+                                href="/login"
+                                className="px-8 py-4 rounded-full font-bold text-lg bg-[#1E293B] border border-[#1E293B] hover:bg-[#334155] transition-all flex items-center gap-2"
+                            >
+                                Open Dashboard <ArrowRight size={18} />
+                            </Link>
+                        </div>
+
+                        <div className="flex items-center justify-center lg:justify-start gap-6 text-sm text-slate-500 pt-4">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-[#F9F506]" />
+                                <span>Free Forever</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-[#F9F506]" />
+                                <span>No Credit Card</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Hero Image / Mockup */}
+                    <div className="relative group perspective-1000">
+                        <div className="relative z-10 transform transition-transform duration-700 hover:rotate-y-6 hover:rotate-x-6">
+                            <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl bg-[#1E293B]/50 backdrop-blur-xl p-2">
+                                <Image
+                                    src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1974&auto=format&fit=crop"
+                                    alt="Dashboard Preview"
+                                    width={800}
+                                    height={600}
+                                    className="rounded-2xl w-full h-auto object-cover opacity-90 hover:opacity-100 transition-opacity"
+                                />
+                            </div>
+
+                            {/* Floating Cards (Decorations) */}
+                            <div className="absolute -left-12 bottom-12 p-4 bg-[#1E293B] border border-white/10 rounded-2xl shadow-xl flex items-center gap-4 animate-bounce duration-[3000ms]">
+                                <div className="w-12 h-12 bg-[#F9F506] rounded-lg flex items-center justify-center text-black">
+                                    <Puzzle size={24} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-white">Item Added</p>
+                                    <p className="text-xs text-slate-400">Just now via Extension</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+            </section>
 
-      {/* Edit Modal */}
-      {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-background-light">
-              <h3 className="text-lg font-bold text-text-main">Ürünü Düzenle</h3>
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
+            {/* 3. FEATURES SECTION */}
+            <section id="features" className="py-24 bg-[#1E293B]/30 border-y border-white/5">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center max-w-2xl mx-auto mb-16">
+                        <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 font-[family-name:Space_Grotesk]">
+                            How <span className="text-[#F9F506]">Kept</span> works.
+                        </h2>
+                        <p className="text-slate-400 text-lg">
+                            Three simple steps to regain control of your online shopping chaos.
+                        </p>
+                    </div>
 
-            <form onSubmit={handleUpdateProduct} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary uppercase mb-1.5">Ürün Resmi (URL)</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                  value={editingProduct.image}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, image: e.target.value })}
-                />
-              </div>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {/* Step 1 */}
+                        <div className="group bg-[#1E293B] border border-white/5 rounded-3xl p-8 hover:border-[#F9F506]/50 transition-all duration-300 hover:shadow-[0_0_30px_-10px_rgba(249,245,6,0.15)] hover:-translate-y-2">
+                            <div className="w-14 h-14 bg-[#0F172A] border border-white/10 rounded-2xl flex items-center justify-center text-[#F9F506] mb-6 group-hover:scale-110 transition-transform">
+                                <Puzzle size={28} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3 font-[family-name:Space_Grotesk]">1. Save Items</h3>
+                            <p className="text-slate-400 leading-relaxed">
+                                Click the browser extension on any product page. We'll extract the image, price, and details automatically.
+                            </p>
+                        </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary uppercase mb-1.5">Ürün Başlığı</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                  value={editingProduct.title}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
-                />
-              </div>
+                        {/* Step 2 */}
+                        <div className="group bg-[#1E293B] border border-white/5 rounded-3xl p-8 hover:border-[#F9F506]/50 transition-all duration-300 hover:shadow-[0_0_30px_-10px_rgba(249,245,6,0.15)] hover:-translate-y-2">
+                            <div className="w-14 h-14 bg-[#0F172A] border border-white/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                                <FolderOpen size={28} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3 font-[family-name:Space_Grotesk]">2. Organize</h3>
+                            <p className="text-slate-400 leading-relaxed">
+                                Create collections for your Living Room, Summer Wardrobe, or Tech Setup. Tag items for easy filtering.
+                            </p>
+                        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary uppercase mb-1.5">Fiyat (Raw)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    value={editingProduct.rawPrice || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, rawPrice: e.target.value })}
-                  />
+                        {/* Step 3 */}
+                        <div className="group bg-[#1E293B] border border-white/5 rounded-3xl p-8 hover:border-[#F9F506]/50 transition-all duration-300 hover:shadow-[0_0_30px_-10px_rgba(249,245,6,0.15)] hover:-translate-y-2">
+                            <div className="w-14 h-14 bg-[#0F172A] border border-white/10 rounded-2xl flex items-center justify-center text-green-400 mb-6 group-hover:scale-110 transition-transform">
+                                <Activity size={28} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3 font-[family-name:Space_Grotesk]">3. Track & Buy</h3>
+                            <p className="text-slate-400 leading-relaxed">
+                                We monitor prices 24/7. Get notified instantly when that expensive item goes on sale or comes back in stock.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary uppercase mb-1.5">Ürün Linki</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                    value={editingProduct.url || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, url: e.target.value })}
-                  />
-                </div>
-              </div>
+            </section>
 
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingProduct(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-text-main font-medium hover:bg-gray-50 transition-colors"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-text-main font-bold shadow-sm hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-95"
-                >
-                  Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
+            {/* 4. CTA SECTION */}
+            <section className="py-32 px-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
+
+                <div className="max-w-4xl mx-auto text-center relative z-10 space-y-8">
+                    <h2 className="text-4xl md:text-6xl font-black tracking-tighter font-[family-name:Space_Grotesk]">
+                        Ready to declutter your <br />
+                        <span className="text-[#F9F506]">digital life?</span>
+                    </h2>
+                    <p className="text-xl text-slate-400">
+                        Join 10,000+ curators saving time and money with Kept.
+                    </p>
+
+                    <div className="flex flex-col items-center gap-4">
+                        <Link
+                            href="/login"
+                            className="bg-[#F9F506] text-black px-10 py-5 rounded-full font-bold text-xl hover:shadow-[0_0_40px_-10px_#F9F506] transition-all hover:scale-105"
+                        >
+                            Get Started for Free
+                        </Link>
+                        <p className="text-sm text-slate-500 tracking-wide font-medium">
+                            NO CREDIT CARD REQUIRED • CANCEL ANYTIME
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5. FOOTER */}
+            <footer className="border-t border-white/10 bg-[#0F172A] pt-16 pb-8 px-6">
+                <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 mb-12">
+                    <div className="col-span-1 md:col-span-2 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-[#F9F506] rounded flex items-center justify-center text-black">
+                                <InfinityIcon size={14} />
+                            </div>
+                            <span className="text-lg font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</span>
+                        </div>
+                        <p className="text-slate-400 max-w-xs text-sm">
+                            The universal wishlist and price tracker for the modern web. Curate your world with ease.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 className="font-bold text-white mb-4">Product</h4>
+                        <ul className="space-y-2 text-sm text-slate-400">
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Extension</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Mobile App</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Pricing</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Changelog</Link></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 className="font-bold text-white mb-4">Company</h4>
+                        <ul className="space-y-2 text-sm text-slate-400">
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">About</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Blog</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Careers</Link></li>
+                            <li><Link href="#" className="hover:text-[#F9F506] transition-colors">Contact</Link></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+                    <p>© 2024 Kept Inc. All rights reserved.</p>
+                    <div className="flex gap-6">
+                        <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
+                        <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+                    </div>
+                </div>
+            </footer>
         </div>
-      )}
-    </>
-  );
+    );
 }

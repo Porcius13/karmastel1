@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Universal Wishlist Tracker",
 };
 
-import Sidebar from "@/components/Sidebar";
+import { AuthContextProvider } from "@/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -24,12 +24,12 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${inter.variable} antialiased font-display bg-background-light text-text-main h-screen flex overflow-hidden`}>
-        <Sidebar />
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <body className={`${inter.variable} antialiased font-sans bg-background text-text-main h-screen flex overflow-hidden`}>
+        <AuthContextProvider>
           {children}
-        </div>
+        </AuthContextProvider>
       </body>
     </html>
   );

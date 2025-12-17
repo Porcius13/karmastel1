@@ -48,6 +48,7 @@ export async function POST(request: Request) {
             price: scraped.price,
             image: scraped.image,
             currency: scraped.currency,
+            inStock: scraped.inStock,
             source: scraped.source || new URL(url).hostname.replace('www.', ''),
             status: 'active',
             isScrapeFailed: false
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
             title: "Hatalı Link (Düzenle)",
             price: 0, // Keeping numeric for consistency, though user prompt implies flexibility, numeric is safer for DB
             image: "https://placehold.co/600x600?text=Manual+Edit",
+            inStock: true, // Defaulting to true for fallback products
             error: true, // As requested
             isScrapeFailed: true, // Keeping for backward compatibility/clarity
             source: new URL(url).hostname.replace('www.', ''),
