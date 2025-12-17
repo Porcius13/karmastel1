@@ -36,24 +36,25 @@ function cleanPrice(text: string | number | undefined | null): number {
 
 // --- BROWSER CONFIG ---
 
+// --- BROWSER CONFIG ---
+
 async function getBrowser() {
     if (process.env.NODE_ENV === 'production') {
         // Vercel / AWS Lambda
-        // Dynamic imports to avoid "Module not found" if packages are missing locally
         const chromium = (await import('@sparticuz/chromium')).default;
         const puppeteerCore = (await import('puppeteer-core')).default;
 
+        // Optimization: Use graphics mode false
         chromium.setGraphicsMode = false;
 
         return await puppeteerCore.launch({
-            args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
-            defaultViewport: { width: 1920, height: 1080 },
-            executablePath: await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"),
-            headless: true,
+            args: [...chromium.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
         });
     } else {
         // Local Development
-        // Use standard 'puppeteer' package
         try {
             const puppeteer = (await import('puppeteer')).default;
             return await puppeteer.launch({
@@ -91,12 +92,14 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             }
         });
 
-        // Tarayıcıya "Ben gerçek bir insanım" kimliği ver
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+        // Use a realistic User Agent
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        // Ekstra başlıklar ekle (Dil ayarı vs.)
+        // Extra Headers
         await page.setExtraHTTPHeaders({
-            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Language': 'tr-TR,tr;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive'
         });
 
         // Navigate

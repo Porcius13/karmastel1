@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { DashboardShell } from '@/components/DashboardShell';
 import { Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -12,8 +12,10 @@ import { CollectionCard } from '@/components/CollectionCard';
 export default function CollectionsPage() {
     const { user } = useAuth();
     const [collectionsMap, setCollectionsMap] = useState<Record<string, number>>({});
+    const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
 
+    // Fetch Products (Counts)
     useEffect(() => {
         if (!user) return;
 
@@ -24,10 +26,6 @@ export default function CollectionsPage() {
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const counts: Record<string, number> = {};
-
-            // Add default collections - REMOVED to prevent ghost folders
-            // ['Home Office', 'Living Room', 'Tech Setup'].forEach(c => counts[c] = 0);
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.collection) {
@@ -36,13 +34,80 @@ export default function CollectionsPage() {
                     counts['Uncategorized'] = (counts['Uncategorized'] || 0) + 1;
                 }
             });
-
             setCollectionsMap(counts);
             setLoading(false);
         });
 
         return () => unsubscribe();
     }, [user]);
+
+    // Fetch Privacy Settings
+    useEffect(() => {
+        if (!user) return;
+
+        const q = query(
+            collection(db, "collection_settings"),
+            where("userId", "==", user.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const settings: Record<string, boolean> = {};
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.name) {
+                    settings[data.name] = data.isPublic || false;
+                }
+            });
+            setPrivacySettings(settings);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
+    const handleTogglePrivacy = async (e: React.MouseEvent, collectionName: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!user) return;
+
+        const currentStatus = privacySettings[collectionName] || false;
+        const newStatus = !currentStatus;
+
+        // Optimistic UI update
+        setPrivacySettings(prev => ({ ...prev, [collectionName]: newStatus }));
+
+        try {
+            // Using a composite ID safe for querying. 
+            // Note: If names have special chars (like slashes), this might be tricky for IDs.
+            // Using setDoc with merge to ensure we create or update.
+            // We store the 'name' field securely inside the doc so we can map it back.
+            // ID: user.uid + "_" + collectionName (sanitized or just strict)
+            // For simplicity, let's assume standard names, but we'll stick to a query-friendly ID approach if possible?
+            // Actually, querying by 'userId' and 'name' logic is better for robustness if IDs are tricky.
+            // But setDoc needs an ID. Let's use a safe hashed-like ID or simple concatenation.
+            const docId = `${user.uid}_${collectionName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+
+            // Wait, if we strip chars, we might collide.
+            // Better: Let's use btoa (Base64) for the ID part to be safe?
+            // Browsers support btoa.
+            const safeNameId = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(collectionName))) : collectionName;
+            const docRef = doc(db, "collection_settings", `${user.uid}_${safeNameId}`);
+
+            await setDoc(docRef, {
+                userId: user.uid,
+                name: collectionName,
+                isPublic: newStatus,
+                updatedAt: new Date()
+            }, { merge: true });
+
+            console.log(`Privacy for ${collectionName} set to ${newStatus}`);
+        } catch (err) {
+            console.error("Error toggling privacy:", err);
+            // Revert on error
+            setPrivacySettings(prev => ({ ...prev, [collectionName]: currentStatus }));
+            alert("Failed to update privacy settings.");
+        }
+    };
 
     const handleDeleteCollection = async (e: React.MouseEvent, collectionName: string) => {
         // Double safety: stop propagation here too even though component does it
@@ -121,15 +186,24 @@ export default function CollectionsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {collectionsList.map(([name, count]) => (
-                            <CollectionCard
-                                key={name}
-                                name={name}
-                                count={count}
-                                onDelete={handleDeleteCollection}
-                                allowDelete={name !== 'Uncategorized'}
-                            />
-                        ))}
+                        {collectionsList.map(([name, count]) => {
+                            // Generate a URL-safe share ID: UID + "_" + Base64Name
+                            const safeName = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(name))) : name;
+                            const shareId = `${user?.uid}_${safeName}`;
+
+                            return (
+                                <CollectionCard
+                                    key={name}
+                                    name={name}
+                                    count={count}
+                                    isPublic={!!privacySettings[name]}
+                                    shareId={shareId}
+                                    onTogglePrivacy={handleTogglePrivacy}
+                                    onDelete={handleDeleteCollection}
+                                    allowDelete={name !== 'Uncategorized'}
+                                />
+                            );
+                        })}
                     </div>
                 )}
             </div>

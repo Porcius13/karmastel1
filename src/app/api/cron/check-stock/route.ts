@@ -4,7 +4,9 @@ import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, up
 import { scrapeProduct } from "@/lib/scraper";
 
 // Revalidate check to prevent caching
+// Revalidate check to prevent caching
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Vercel Timeout Extension
 
 export async function GET() {
     try {
