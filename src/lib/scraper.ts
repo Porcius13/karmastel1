@@ -49,16 +49,28 @@ async function getBrowser() {
         const chromiumAny = chromium as any;
         chromiumAny.setGraphicsMode = false;
 
-        return await puppeteerCore.launch({
-            args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
-            defaultViewport: {
-                width: 1280,
-                height: 720,
-                deviceScaleFactor: 1,
-            },
-            executablePath: await chromiumAny.executablePath(),
-            headless: chromiumAny.headless,
-        });
+        // Remote Executable Path for Vercel (Brotli Fix)
+        // Using v131.0.1 as it is a recent stable version often compatible with modern Puppeteer
+        const remoteExecutablePath = "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
+
+        try {
+            const execPath = await chromiumAny.executablePath(remoteExecutablePath);
+
+            return await puppeteerCore.launch({
+                args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
+                defaultViewport: {
+                    width: 1280,
+                    height: 720,
+                    deviceScaleFactor: 1,
+                },
+                executablePath: execPath,
+                headless: chromiumAny.headless,
+                ignoreHTTPSErrors: true,
+            } as any);
+        } catch (launchError) {
+            console.error("Browser launch error (Vercel):", launchError);
+            throw launchError;
+        }
     } else {
         // Local Development
         try {
