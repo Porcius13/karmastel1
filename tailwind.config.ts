@@ -10,17 +10,22 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                background: "#0F172A", // Deep Charcoal
-                surface: "#1E293B",     // Card Background
-                surfaceHighlight: "#334155", // Hover states
+                background: "var(--background)",
+                surface: "var(--surface)",
+                surfaceHighlight: "var(--surface-highlight)",
                 primary: {
-                    DEFAULT: "#F9F506", // Acid Yellow
-                    foreground: "#000000"
+                    DEFAULT: "var(--primary)",
+                    foreground: "#271A12" // Always dark text on peach buttons for accessibility
                 },
+                // Foreground maps to the main text color variable
+                foreground: "var(--text-main)",
+
                 muted: {
-                    DEFAULT: "#64748B",
-                    foreground: "#94A3B8"
+                    DEFAULT: "var(--muted)",
+                    foreground: "var(--muted-foreground)"
                 },
+                border: "var(--border)",
+
                 danger: "#EF4444",
                 success: "#22C55E"
             },
@@ -29,6 +34,10 @@ const config: Config = {
                 xl: "1rem",
                 '2xl': "1.5rem"
             },
+            boxShadow: {
+                // Vibrant peach glow
+                'glow': '0 0 40px -10px rgba(251, 146, 60, 0.4)',
+            }
         },
     },
     plugins: [],

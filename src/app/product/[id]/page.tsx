@@ -18,7 +18,9 @@ import {
     ArrowLeft,
     Bell,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    Heart,
+    FolderPlus
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
@@ -60,6 +62,43 @@ export default function ProductDetailPage() {
         setSavingNote(false);
     };
 
+    const handleToggleFavorite = async () => {
+        if (!product) return;
+        const newStatus = !product.isFavorite;
+
+        // Optimistic update
+        setProduct({ ...product, isFavorite: newStatus });
+
+        try {
+            const docRef = doc(db, "products", product.id);
+            await updateDoc(docRef, { isFavorite: newStatus });
+        } catch (e) {
+            console.error("Error updating favorite", e);
+            // Revert on error
+            setProduct({ ...product, isFavorite: !newStatus });
+        }
+    };
+
+    const handleAddToCollection = async () => {
+        if (!product) return;
+
+        const currentCollection = product.collection || '';
+        const newCollection = prompt("Enter collection name:", currentCollection);
+
+        if (newCollection !== null && newCollection !== currentCollection) {
+            // Optimistic update
+            setProduct({ ...product, collection: newCollection });
+
+            try {
+                const docRef = doc(db, "products", product.id);
+                await updateDoc(docRef, { collection: newCollection });
+            } catch (e) {
+                console.error("Error updating collection", e);
+                setProduct({ ...product, collection: currentCollection });
+            }
+        }
+    };
+
     const handleDelete = async () => {
         if (confirm('Are you sure you want to delete this specific item?')) {
             // Implement delete logic here if needed, or redirect
@@ -85,7 +124,7 @@ export default function ProductDetailPage() {
             <main className="max-w-7xl mx-auto space-y-6 pb-20">
                 {/* Breadcrumb / Back */}
                 <div className="flex items-center gap-4">
-                    <Link href="/" className="p-2 rounded-full bg-surface hover:bg-surfaceHighlight text-muted-foreground hover:text-white transition-colors">
+                    <Link href="/dashboard" className="p-2 rounded-full bg-surface hover:bg-surfaceHighlight text-muted-foreground hover:text-[var(--text-main)] transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
                     <h1 className="text-sm font-medium text-muted-foreground">Product Details</h1>
@@ -118,13 +157,30 @@ export default function ProductDetailPage() {
                                 href={product.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-2 bg-text-white text-black bg-primary hover:bg-primary/90 p-4 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-lg shadow-primary/20"
+                                className="col-span-2 flex items-center justify-center gap-2 bg-primary text-black hover:bg-primary/90 p-4 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-lg shadow-primary/20"
                             >
                                 <ExternalLink size={20} />
                                 <span>Go to Store</span>
                             </a>
+
                             <button
-                                className="flex items-center justify-center gap-2 bg-surface text-white border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
+                                onClick={handleToggleFavorite}
+                                className={`flex items-center justify-center gap-2 p-4 rounded-xl font-medium transition-all border ${product.isFavorite ? 'bg-red-500/10 text-red-500 border-red-500/50' : 'bg-surface text-[var(--text-main)] border-surfaceHighlight hover:bg-surfaceHighlight'}`}
+                            >
+                                <Heart size={20} fill={product.isFavorite ? "currentColor" : "none"} />
+                                <span>Favorite</span>
+                            </button>
+
+                            <button
+                                onClick={handleAddToCollection}
+                                className="flex items-center justify-center gap-2 bg-surface text-[var(--text-main)] border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
+                            >
+                                <FolderPlus size={20} />
+                                <span>Collection</span>
+                            </button>
+
+                            <button
+                                className="flex items-center justify-center gap-2 bg-surface text-[var(--text-main)] border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
                             >
                                 <Share2 size={20} />
                                 <span>Share</span>
@@ -138,7 +194,7 @@ export default function ProductDetailPage() {
                         {/* Header Info */}
                         <div>
                             <div className="flex items-start justify-between gap-4">
-                                <h1 className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
+                                <h1 className="text-3xl md:text-4xl font-black text-[var(--text-main)] leading-tight tracking-tight">
                                     {product.title}
                                 </h1>
                                 <div className="flex gap-2">
@@ -179,7 +235,7 @@ export default function ProductDetailPage() {
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                     <LineChart size={20} />
                                 </div>
-                                <h3 className="text-lg font-bold text-white">Price History</h3>
+                                <h3 className="text-lg font-bold text-[var(--text-main)]">Price History</h3>
                             </div>
 
                             {/* Reusing existing PriceChart component */}
@@ -196,7 +252,7 @@ export default function ProductDetailPage() {
                                     <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
                                         <StickyNote size={20} />
                                     </div>
-                                    <h3 className="text-lg font-bold text-white">Personal Notes</h3>
+                                    <h3 className="text-lg font-bold text-[var(--text-main)]">Personal Notes</h3>
                                 </div>
                                 {savingNote && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
                             </div>
@@ -206,7 +262,7 @@ export default function ProductDetailPage() {
                                 onChange={(e) => setNote(e.target.value)}
                                 onBlur={handleSaveNote}
                                 placeholder="Add details about sizing, color preferences, or why you want this..."
-                                className="w-full h-32 bg-background rounded-xl border border-surfaceHighlight p-4 text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none text-sm leading-relaxed"
+                                className="w-full h-32 bg-background rounded-xl border border-surfaceHighlight p-4 text-[var(--text-main)] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none text-sm leading-relaxed"
                             />
                         </div>
 

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
+import { db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
 interface Product {
     id: string;
@@ -14,6 +16,7 @@ interface Product {
     priceHistory?: any[];
     collection?: string;
     targetPrice?: number;
+    isFavorite?: boolean;
 }
 
 interface SmartProductCardProps {
@@ -24,8 +27,46 @@ interface SmartProductCardProps {
     collections?: string[]; // Needed for Edit Modal
 }
 
-export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onSetAlarm, onOpenChart, onDelete, collections = [] }) => {
+export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [] }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    // Use local state for optimistic updates
+    const [product, setProduct] = useState(initialProduct);
+
+    // Sync local state if prop changes (though for this simple case, direct mapping is often enough, but we want internal mutations)
+    // Actually, usually we rely on parent to re-render, but for optimistic updates without parent handler, we need local state.
+    // Ideally we should sync back up or just rely on re-fetch, but let's do local + firestore.
+
+    const handleToggleFavorite = async () => {
+        const newStatus = !product.isFavorite;
+        // Optimistic update
+        setProduct((prev) => ({ ...prev, isFavorite: newStatus }));
+
+        try {
+            const docRef = doc(db, "products", product.id);
+            await updateDoc(docRef, { isFavorite: newStatus });
+        } catch (e) {
+            console.error("Error updating favorite", e);
+            // Revert
+            setProduct((prev) => ({ ...prev, isFavorite: !newStatus }));
+        }
+    };
+
+    const handleAddToCollection = async () => {
+        const currentCollection = product.collection || '';
+        const newCollection = prompt("Hangi koleksiyona eklemek istersiniz?", currentCollection);
+
+        if (newCollection !== null && newCollection !== currentCollection) {
+            // Optimistic update
+            setProduct((prev) => ({ ...prev, collection: newCollection }));
+            try {
+                const docRef = doc(db, "products", product.id);
+                await updateDoc(docRef, { collection: newCollection });
+            } catch (e) {
+                console.error("Error updating collection", e);
+                setProduct((prev) => ({ ...prev, collection: currentCollection }));
+            }
+        }
+    };
 
     // Format Price
     const numericPrice = typeof product.price === 'string'
@@ -82,14 +123,14 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onS
                         ) : (
                             <button
                                 onClick={onSetAlarm}
-                                className="bg-surfaceHighlight text-white p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-danger hover:scale-110 shadow-lg pointer-events-auto delay-75"
+                                className="bg-surfaceHighlight text-[var(--text-main)] p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-danger hover:scale-110 shadow-lg pointer-events-auto delay-75"
                                 title="Stok Alarmı Kur"
                             >
                                 <Bell size={20} />
                             </button>
                         )}
 
-                        {/* Analysis/Chart Button */}
+                        {/* Analysis/Chart Button - Centered */}
                         <button
                             onClick={onOpenChart}
                             className="bg-white text-black p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary hover:scale-110 shadow-lg delay-100 pointer-events-auto"
@@ -98,7 +139,25 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onS
                             <TrendingDown size={20} />
                         </button>
 
-                        {/* Delete Button (If provided) */}
+                        {/* Favorite Button - Bottom Right */}
+                        <button
+                            onClick={handleToggleFavorite}
+                            className={`absolute bottom-4 right-4 bg-white p-3 rounded-full transition-all duration-300 hover:scale-110 shadow-lg pointer-events-auto ${product.isFavorite ? 'text-red-500 hover:bg-red-50' : 'text-black hover:bg-red-50 hover:text-red-500'}`}
+                            title="Favorilere Ekle/Çıkar"
+                        >
+                            <Heart size={18} fill={product.isFavorite ? "currentColor" : "none"} />
+                        </button>
+
+                        {/* Collection Button - Bottom Left */}
+                        <button
+                            onClick={handleAddToCollection}
+                            className="absolute bottom-4 left-4 bg-white text-black p-3 rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-500 hover:scale-110 shadow-lg pointer-events-auto"
+                            title="Koleksiyona Ekle"
+                        >
+                            <FolderPlus size={18} />
+                        </button>
+
+                        {/* Delete Button (If provided) - Shifted Delay */}
                         {onDelete && (
                             <button
                                 onClick={(e) => {
@@ -106,8 +165,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onS
                                     e.stopPropagation();
                                     onDelete();
                                 }}
-                                className="bg-black/50 text-white p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:scale-110 shadow-lg delay-150 pointer-events-auto"
-                                title="Delete Item"
+                                className="bg-black/50 text-white p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:scale-110 shadow-lg delay-300 pointer-events-auto"
+                                title="Sil"
                             >
                                 <Trash2 size={20} />
                             </button>
@@ -130,7 +189,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onS
                         )}
 
                         <div className="bg-background/80 backdrop-blur px-3 py-1.5 rounded-lg border border-white/5">
-                            <span className={`text-sm font-bold ${isTargetMet ? 'text-primary' : 'text-white'}`}>
+                            <span className={`text-sm font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
                                 {formattedPrice}
                             </span>
                         </div>
@@ -139,7 +198,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product, onS
 
                 {/* Meta Info */}
                 <div className="mt-3 px-1">
-                    <h3 className="text-sm font-medium leading-snug text-white line-clamp-2 group-hover:text-primary transition-colors">
+                    <h3 className="text-sm font-medium leading-snug text-[var(--text-main)] line-clamp-2 group-hover:text-primary transition-colors">
                         {product.title}
                     </h3>
                     {product.targetPrice && !isTargetMet && (

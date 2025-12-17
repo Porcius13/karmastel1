@@ -1,50 +1,73 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
-/*
-  Using Tailwind v4 with a config file requires identifying the config path
-  or relying on auto-discovery if in root.
-  However, for v4 CSS-first approach combined with legacy config compatibility,
-  we keep the @import "tailwindcss"; and let the framework pick up the config.
-  
-  Note: In v4, typical usage is @import "tailwindcss"; @theme { ... }.
-  But to enforce 'class' based dark mode easily and reuse the config object structure
-  requested, we rely on the created tailwind.config.ts.
+/* 
+  Peachy Slate Design System 🍑🪨
+  A hybrid theme combining warm ivory tones with modern slate depth.
 */
 
 @theme {
-  /* Extending theme from config file usually happens automatically if detected. 
-     If not, we can declare specific overrides here. 
-     For now, we leave this empty to let the config file drive the values. */
+  /* Config file drives the theme values */
 }
 
-/* Custom Utilities if needed */
-@utility scrollbar-hide {
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-
-  /* Firefox */
-  &::-webkit-scrollbar {
-    display: none;
-    /* Chrome, Safari and Opera */
-  }
-}
-
-/* Base Styles */
+/* Base Styles with Theme Variables */
 @layer base {
-  body {
-    @apply bg-[#0F172A] text-white;
-    /* or use the theme keys if they resolve correctly, e.g., bg-background text-primary-foreground */
-    background-color: #0F172A;
-    color: #ffffff;
+  :root {
+    /* LIGHT MODE (Peachy Glow) */
+    --background: #FFFAF0;
+    /* Warm Ivory */
+    --surface: #FFFFFF;
+    /* Pure White */
+    --surface-highlight: #FFF7ED;
+    /* Very light peach/orange wash */
+    --primary: #FDBA74;
+    /* Soft Peach */
+    --border: #EAD0C0;
+    /* Soft Peach Border */
+
+    --text-main: #271A12;
+    /* Deep Warm Brown (Foreground) */
+    --muted: #EAD0C0;
+    /* Muted border-like */
+    --muted-foreground: #785C48;
+    /* Medium Brown */
   }
 
-  /* Default border color */
-  *,
-  ::before,
-  ::after {
-    @apply border-[#1E293B];
-    border-color: #1E293B;
+  .dark {
+    /* DARK MODE (Modern Slate) */
+    --background: #0F172A;
+    /* Deep Slate */
+    --surface: #1E293B;
+    /* Slate Gray */
+    --surface-highlight: #334155;
+    /* Lighter Slate for hover */
+    --primary: #FB923C;
+    /* Vibrant Peach - Pops on dark */
+    --border: #334155;
+    /* Slate Border */
+
+    --text-main: #F8FAFC;
+    /* Clean White (Slate-tinted) */
+    --muted: #334155;
+    /* Muted border-like */
+    --muted-foreground: #94A3B8;
+    /* Muted Slate Blue/Gray */
+  }
+
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+
+  /* Global scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
   }
 }

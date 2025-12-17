@@ -9,6 +9,7 @@ import {
     ShoppingBag,
     Archive,
     Plus,
+    Folder,
     Hash,
     Settings,
     PanelLeftClose,
@@ -36,7 +37,8 @@ export default function Sidebar({
     const pathname = usePathname();
 
     const menuItems = [
-        { name: 'All Items', icon: List, href: '/', action: () => onSelectCollection?.(null) },
+        { name: 'All Items', icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
+        { name: 'Collections', icon: Folder, href: '/collections' },
         { name: 'Favorites', icon: Heart, href: '/favorites' },
         { name: 'Purchased', icon: ShoppingBag, href: '/purchased' },
         { name: 'Archived', icon: Archive, href: '/archived' },
@@ -45,7 +47,7 @@ export default function Sidebar({
     return (
         <aside
             className={`
-            h-full bg-surface border-r border-surfaceHighlight flex flex-col text-white flex-shrink-0 transition-all duration-300 ease-in-out
+            h-full bg-surface border-r border-surfaceHighlight flex flex-col text-[var(--text-main)] flex-shrink-0 transition-all duration-300 ease-in-out
             ${isCollapsed ? 'w-20 items-center' : 'w-72'}
             ${className}
           `}
@@ -62,9 +64,7 @@ export default function Sidebar({
                     )}
                 </div>
                 {!isCollapsed && (
-                    <button className="text-muted-foreground hover:text-white transition-colors">
-                        <PanelLeftClose size={20} />
-                    </button>
+                    <></>
                 )}
             </div>
 
@@ -75,7 +75,7 @@ export default function Sidebar({
                     <button
                         onClick={onAddCollection}
                         className={`
-                        flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all border border-white/5 group
+                        flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-[var(--text-main)] rounded-xl transition-all border border-white/5 group
                         ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full p-3'}
                     `} title={isCollapsed ? "Add New Collection" : undefined}>
                         <div className={`w-6 h-6 rounded-full bg-primary flex items-center justify-center text-black shrink-0 ${isCollapsed ? '' : ''}`}>
@@ -89,7 +89,7 @@ export default function Sidebar({
                     {!isCollapsed && <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">Menu</h3>}
 
                     {menuItems.map((item) => {
-                        const isActive = item.name === 'All Items' ? (!activeCollection && pathname === '/') : pathname === item.href;
+                        const isActive = item.name === 'All Items' ? (!activeCollection && pathname === '/dashboard') : pathname === item.href;
 
                         return (
                             <Link
@@ -97,9 +97,12 @@ export default function Sidebar({
                                 href={item.href}
                                 onClick={(e) => {
                                     if (item.action) {
-                                        // Prevent default only if we stay on same page
-                                        if (pathname === '/') e.preventDefault();
-                                        item.action();
+                                        if (item.name === 'All Items') {
+                                            if (pathname === '/dashboard') {
+                                                e.preventDefault();
+                                                item.action?.();
+                                            }
+                                        }
                                     }
                                 }}
                                 title={isCollapsed ? item.name : undefined}
@@ -108,10 +111,10 @@ export default function Sidebar({
                                     ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
                                     ${isActive
                                         ? 'bg-primary text-black font-medium shadow-lg shadow-primary/20'
-                                        : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                                        : 'text-muted-foreground hover:text-[var(--text-main)] hover:bg-white/5'}
                                 `}
                             >
-                                <item.icon size={20} className={`shrink-0 ${isActive ? 'text-black' : 'text-muted-foreground group-hover:text-white transition-colors'}`} />
+                                <item.icon size={20} className={`shrink-0 ${isActive ? 'text-black' : 'text-muted-foreground group-hover:text-[var(--text-main)] transition-colors'}`} />
                                 {!isCollapsed && (
                                     <>
                                         <span className="whitespace-nowrap">{item.name}</span>
@@ -125,7 +128,7 @@ export default function Sidebar({
                 <div className={`mt-8 space-y-1 ${isCollapsed ? 'hidden' : 'block'}`}>
                     <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center justify-between whitespace-nowrap">
                         <span>Collections</span>
-                        <button onClick={onAddCollection} className="hover:text-white transition-colors"><Plus size={14} /></button>
+                        <button onClick={onAddCollection} className="hover:text-[var(--text-main)] transition-colors"><Plus size={14} /></button>
                     </h3>
                     {collections.map((col) => {
                         const isColActive = activeCollection === col;
@@ -134,7 +137,7 @@ export default function Sidebar({
                                 key={col}
                                 onClick={() => onSelectCollection?.(col)}
                                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group
-                                ${isColActive ? 'bg-white/10 text-white' : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                                ${isColActive ? 'bg-white/10 text-[var(--text-main)]' : 'text-muted-foreground hover:text-[var(--text-main)] hover:bg-white/5'}
                             `}
                             >
                                 <Hash size={18} className={`${isColActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'} transition-colors shrink-0`} />
@@ -148,7 +151,7 @@ export default function Sidebar({
             {/* Footer / User Profile */}
             <div className={`border-t border-surfaceHighlight/50 bg-background/20 mt-auto ${isCollapsed ? 'p-2' : 'p-4'}`}>
                 <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center mb-2' : 'mb-3'}`}>
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm border-2 border-surface shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-[var(--text-main)] font-bold text-sm border-2 border-surface shrink-0">
                         MK
                         {isCollapsed && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background"></span>}
                     </div>
@@ -156,7 +159,7 @@ export default function Sidebar({
                     {!isCollapsed && (
                         <>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">Miayis Kept</p>
+                                <p className="text-sm font-semibold text-[var(--text-main)] truncate">Miayis Kept</p>
                                 <p className="text-xs text-muted-foreground truncate">Free Plan</p>
                             </div>
                             <Link href="/settings" className="text-muted-foreground hover:text-primary transition-colors">
