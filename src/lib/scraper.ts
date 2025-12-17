@@ -45,13 +45,19 @@ async function getBrowser() {
         const puppeteerCore = (await import('puppeteer-core')).default;
 
         // Optimization: Use graphics mode false
-        chromium.setGraphicsMode = false;
+        // Cast to any to avoid TypeScript errors with @sparticuz/chromium types
+        const chromiumAny = chromium as any;
+        chromiumAny.setGraphicsMode = false;
 
         return await puppeteerCore.launch({
-            args: [...chromium.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
+            defaultViewport: {
+                width: 1280,
+                height: 720,
+                deviceScaleFactor: 1,
+            },
+            executablePath: await chromiumAny.executablePath(),
+            headless: chromiumAny.headless,
         });
     } else {
         // Local Development
