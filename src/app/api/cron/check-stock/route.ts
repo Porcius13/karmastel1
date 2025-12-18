@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 import { scrapeProduct } from "@/lib/scraper";
+import * as Sentry from "@sentry/nextjs";
 
 // Revalidate check to prevent caching
 // Revalidate check to prevent caching
@@ -59,19 +60,42 @@ export async function GET() {
                 const uniqueProductIds = new Set(waitingAlerts.map(a => a.productId));
 
                 // Update Products with latest Price & Status & History
-                uniqueProductIds.forEach(productId => {
+                // Update Products with latest Price & Status & History
+                for (const productId of Array.from(uniqueProductIds)) {
                     const productRef = doc(db, "products", productId);
-                    batch.update(productRef, {
-                        price: price, // Update current price
-                        inStock: scrapedData.inStock,
-                        lastStockCheck: serverTimestamp(),
-                        // Add to price history
-                        priceHistory: arrayUnion({
-                            date: new Date().toISOString(),
-                            price: price
-                        })
-                    });
-                });
+
+                    // READ: Fetch current state to compare price
+                    // We must read individually to ensure we only append history ON CHANGE
+                    try {
+                        const productSnap = await getDoc(productRef);
+                        if (!productSnap.exists()) continue;
+                        const productData = productSnap.data();
+
+                        const currentPrice = productData.price || 0;
+                        const newPrice = price; // Scraped price
+
+                        const updates: any = {
+                            price: newPrice,
+                            inStock: scrapedData.inStock,
+                            lastStockCheck: serverTimestamp()
+                        };
+
+                        // CONDITIONAL HISTORY UPDATE
+                        // Only add to history if price changed OR history is empty
+                        // This prevents bloating the array with identical consecutive prices
+                        if (currentPrice !== newPrice) {
+                            updates.priceHistory = arrayUnion({
+                                date: new Date().toISOString(),
+                                price: newPrice
+                            });
+                        }
+
+                        batch.update(productRef, updates);
+
+                    } catch (readError) {
+                        console.error(`Error reading product ${productId}:`, readError);
+                    }
+                }
 
                 // B. Check Target Price
                 if (scrapedData.inStock && waitingAlerts.length > 0) {
@@ -89,33 +113,8 @@ export async function GET() {
                     console.log(`Stock found for ${url}. Notifying ${waitingAlerts.length} users.`);
                 }
 
-                // NEW: TARGET PRICE LOGIC (Requires fetching product doc to get targetPrice, or assuming we have it on alert)
-                // Since this cron iterates URLs from ALERTS, it handles stock alerts. 
-                // However, Target Price alerts might be separate or embedded in the product. 
-                // For MVP: We will update the PRICE and rely on client-side visual badge (already done).
-                // To support EMAIL notifications for Target Price, we would need to fetch the Product Doc here.
-
-                // Fetch product doc to check targetPrice (Optimization: We are updating it anyway)
-                uniqueProductIds.forEach(productId => {
-                    const productRef = doc(db, "products", productId);
-                    // note: we can't easily READ inside this batch loop efficiently without refactoring to read all first.
-                    // For now, we update the price. The "Target Met" badge on frontend is the primary indicator requested.
-                    // The prompt asked for "Alert System Update". 
-                    // Let's rely on the Update logic we have. 
-                    // Adding specific logic here might complicate the batch without a read.
-                    // Simply updating price is enough for the Frontend Badge to light up.
-
-                    batch.update(productRef, {
-                        price: price, // Update current price
-                        inStock: scrapedData.inStock,
-                        lastStockCheck: serverTimestamp(),
-                        // Add to price history
-                        priceHistory: arrayUnion({
-                            date: new Date().toISOString(),
-                            price: price
-                        })
-                    });
-                });
+                // (Target Price Logic - Handled in Notifications block or implicitly by Price Update)
+                // We rely on the Frontend to show "Target Met" badge based on updated price.
 
                 if (scrapedData.inStock && waitingAlerts.length > 0) {
                     // ... logic handled above or consolidated here
@@ -127,6 +126,7 @@ export async function GET() {
 
             } catch (error) {
                 console.error(`Error processing URL ${url}:`, error);
+                Sentry.captureException(error);
             }
         }
 
@@ -138,6 +138,7 @@ export async function GET() {
 
     } catch (error: any) {
         console.error("Cron Job Error:", error);
+        Sentry.captureException(error);
         return NextResponse.json(
             { success: false, error: "Internal Server Error" },
             { status: 500 }

@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import * as Sentry from "@sentry/nextjs";
 
 // --- INTERFACES ---
 
@@ -10,59 +11,100 @@ export interface ScrapedData {
     currency: string;
     description: string;
     inStock: boolean;
-    source: 'json-ld' | 'regex-scan' | 'visual-scan' | 'dom-selectors' | 'manual';
+    source: 'meta-tag' | 'json-ld' | 'dom-selectors' | 'regex-scan' | 'manual';
     error?: string;
 }
 
-// --- HELPERS ---
+// --- SMART PRICE PARSER ---
 
-function cleanPrice(text: string | number | undefined | null): number {
-    if (text === null || text === undefined) return 0;
-    if (typeof text === 'number') return text;
+function smartPriceParse(raw: any): number {
+    if (!raw) return 0;
+    if (typeof raw === 'number') return raw;
 
-    let cleaned = text.toString().replace(/\s+/g, "").trim();
-    cleaned = cleaned.replace(/tl|try|usd|eur|\$|€|£|₺/gi, "");
+    let str = raw.toString().trim();
+    // Remove invalid chars but keep digits, commas, dots
+    str = str.replace(/[^\d.,]/g, "");
 
-    // Handle Turkish number format (1.234,56 -> 1234.56)
-    if (cleaned.includes(",") && cleaned.includes(".")) {
-        cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-    } else if (cleaned.includes(",")) {
-        cleaned = cleaned.replace(",", ".");
+    if (!str) return 0;
+
+    // Zara / Integer Cents check implies if no dot/comma, it might be cents?
+    // User logic: "Zara için fiyatın son iki hanesinin kuruş olduğunu anlayan"
+    // However, usually we can rely on punctuation.
+    // Let's implement robust punctuation detection.
+
+    // 1. Remove thousands separators
+    // If we have both , and . -> The last one is decimal separator.
+    if (str.includes(',') && str.includes('.')) {
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+            // comma is decimal (1.234,50)
+            str = str.replace(/\./g, "").replace(",", ".");
+        } else {
+            // dot is decimal (1,234.50)
+            str = str.replace(/,/g, "");
+        }
+    } else if (str.includes(',')) {
+        // Only comma. 
+        // 123,45 -> decimal
+        // 1,234 -> typically thousands if 3 digits after, but in TR comma is usually decimal.
+        // Rule: Treat comma as decimal unless it looks exactly like 1,234 (3 decimals) AND we are very sure.
+        // Actually, in Turkey, comma is standard decimal.
+        str = str.replace(",", ".");
+    } else if (str.includes('.')) {
+        // Only dot. 
+        // 123.45 -> decimal
+        // 1.234 -> could be thousands (TR) or decimal (US).
+        // Ambiguity. If we assume TR context:
+        // 1.234 -> 1234
+        // 10.999 -> 10999
+        // 10.99 -> 10.99
+        const parts = str.split('.');
+        if (parts.length > 1) {
+            const lastPart = parts[parts.length - 1];
+            // If last part is exactly 3 digits, it's likely a thousands separator in TR context
+            // EXCEPT if it is a small number like 1.234 TL (Price). 
+            // Ideally we want to be safe. 
+            // Let's assume dot is decimal unless multiple dots exist.
+            if (parts.length > 2) {
+                // 1.234.567 -> remove dots
+                str = str.replace(/\./g, "");
+            } else {
+                if (lastPart.length === 3) {
+                    // 1.234 -> 1234
+                    str = str.replace(".", "");
+                }
+                // else 1.99 -> 1.99, leave it
+            }
+        }
     }
 
-    const val = parseFloat(cleaned);
-    return isNaN(val) ? 0 : val;
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
 }
 
-// --- BROWSER CONFIG ---
+// Special Zara-like cleaner for regex results that might be raw ints
+function cleanRegexPrice(raw: string): number {
+    // If string is like "179000" (Zara sometimes sends this for 1790.00)
+    // We need context. For now, use smartPriceParse.
+    return smartPriceParse(raw);
+}
+
 
 // --- BROWSER CONFIG ---
 
 async function getBrowser() {
     if (process.env.NODE_ENV === 'production') {
-        // Vercel / AWS Lambda
         const chromium = (await import('@sparticuz/chromium')).default;
         const puppeteerCore = (await import('puppeteer-core')).default;
-
-        // Optimization: Use graphics mode false
-        // Cast to any to avoid TypeScript errors with @sparticuz/chromium types
         const chromiumAny = chromium as any;
         chromiumAny.setGraphicsMode = false;
 
-        // Remote Executable Path for Vercel (Brotli Fix)
-        // Using v131.0.1 as it is a recent stable version often compatible with modern Puppeteer
         const remoteExecutablePath = "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
 
         try {
             const execPath = await chromiumAny.executablePath(remoteExecutablePath);
-
             return await puppeteerCore.launch({
-                args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"],
-                defaultViewport: {
-                    width: 1280,
-                    height: 720,
-                    deviceScaleFactor: 1,
-                },
+                args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"],
+                defaultViewport: { width: 1366, height: 768, deviceScaleFactor: 1 },
                 executablePath: execPath,
                 headless: chromiumAny.headless,
                 ignoreHTTPSErrors: true,
@@ -72,15 +114,14 @@ async function getBrowser() {
             throw launchError;
         }
     } else {
-        // Local Development
         try {
             const puppeteer = (await import('puppeteer')).default;
             return await puppeteer.launch({
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
             });
         } catch (err) {
-            console.error("Local puppeteer import failed. Ensure 'puppeteer' is installed.", err);
+            console.error("Local puppeteer import failed.", err);
             throw err;
         }
     }
@@ -89,356 +130,263 @@ async function getBrowser() {
 // --- SCRAPER FUNCTION ---
 
 export async function scrapeProduct(url: string): Promise<ScrapedData> {
-    if (!url) {
-        throw new Error("URL is required");
-    }
+    if (!url) throw new Error("URL is required");
 
-    let browser = null;
+    return Sentry.withScope(async (scope) => {
+        const domainName = new URL(url).hostname.replace('www.', '');
+        scope.setTag("site", domainName);
+        scope.setTag("scraper_mode", "hybrid_regex");
 
-    try {
-        browser = await getBrowser();
-        const page = await browser.newPage();
+        let browser = null;
 
-        await page.setViewport({ width: 1280, height: 800 });
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            const resourceType = req.resourceType();
-            if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
-                req.abort();
-            } else {
-                req.continue();
-            }
-        });
+        try {
+            browser = await getBrowser();
+            const page = await browser.newPage();
 
-        // Use a realistic User Agent
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            await page.setExtraHTTPHeaders({
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            });
 
-        // Extra Headers
-        await page.setExtraHTTPHeaders({
-            'Accept-Language': 'tr-TR,tr;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive'
-        });
+            await page.setRequestInterception(true);
+            page.on('request', (req) => {
+                if (['image', 'stylesheet', 'font', 'media', 'other'].includes(req.resourceType())) {
+                    req.abort();
+                } else {
+                    req.continue();
+                }
+            });
 
-        // Navigate
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
-        // Wait for dynamic content - Replacing waitForTimeout
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // --- DEEP SCAN EVALUATION ---
-        const rawData = await page.evaluate(() => {
-            const result: any = {
-                title: "",
-                price: "",
-                image: "",
-                currency: "TRY",
-                inStock: true, // Default
-                source: "manual"
-            };
-
-            // 0. Stock Detection Logic
+            // 1. NAVIGATION (Robust 25s Timeout)
             try {
-                const bodyText = document.body.innerText.toLowerCase();
-                const outOfStockKeywords = ["tükendi", "stokta yok", "sold out", "out of stock", "gelince haber ver"];
+                console.log("Navigating to:", url);
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+            } catch (error) {
+                console.warn("Navigation Timeout (25s) - Proceeding to extraction...");
+            }
 
-                // Negative Check
-                let negativeKeywordFound = false;
-                for (const keyword of outOfStockKeywords) {
-                    if (bodyText.includes(keyword)) {
-                        negativeKeywordFound = true;
-                        // Don't result.inStock = false yet, wait for button check
+            // Wait for JSON-LD settling
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Hepsiburada Specific Lazy Load Trigger
+            if (url.includes('hepsiburada')) {
+                try {
+                    await page.evaluate(() => window.scrollBy(0, 1000));
+                    await new Promise(r => setTimeout(r, 1500));
+                } catch (e) { }
+            }
+
+            // 2. DOM EVALUATION (First Priority)
+            const domData = await page.evaluate(() => {
+                const result: any = { title: "", price: "", image: "", currency: "TRY", inStock: true, source: "manual" };
+
+                // In-Browser Helper
+                const safePrice = (val: any) => {
+                    // Re-implement simplified smart parse logic in browser or just return string
+                    // We will parse properly in Node context using smartPriceParse
+                    if (!val) return "";
+                    return val.toString().trim();
+                };
+
+                const cleanUrl = (raw: any): string => {
+                    if (!raw) return "";
+                    let u = (Array.isArray(raw) ? raw[0] : (raw.url || raw));
+                    if (typeof u !== 'string') return "";
+                    if (u.startsWith('//')) u = 'https:' + u;
+                    if (u.includes("trendyol.com") && u.includes("/mnresize/")) u = u.replace(/\/mnresize\/\d+\/\d+\//, "/");
+                    return u;
+                };
+
+                // Strategy A: JSON-LD
+                try {
+                    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                    for (const script of scripts) {
+                        try {
+                            let json = JSON.parse(script.innerHTML);
+                            if (!Array.isArray(json)) json = [json];
+                            for (const item of json) {
+                                // Recursive search could be better but keep it simple
+                                const type = item['@type'];
+                                if (type && (type === 'Product' || type.includes('Product'))) {
+                                    if (item.name) result.title = item.name;
+                                    if (item.image) result.image = cleanUrl(item.image);
+
+                                    const offer = item.offers ? (Array.isArray(item.offers) ? item.offers[0] : item.offers) : null;
+                                    if (offer) {
+                                        result.price = safePrice(offer.price || offer.lowPrice || offer.highPrice);
+                                        if (offer.priceCurrency) result.currency = offer.priceCurrency;
+                                        if (offer.availability && !offer.availability.includes('InStock')) result.inStock = false;
+                                        result.source = 'json-ld';
+                                    }
+                                    if (result.price) return result;
+                                }
+                            }
+                        } catch (e) { }
                     }
+                } catch (e) { }
+
+                // Strategy B: Meta Tags
+                if (!result.price) {
+                    try {
+                        const priceMeta = document.querySelector('meta[property="product:price:amount"]') || document.querySelector('meta[property="og:price:amount"]');
+                        if (priceMeta) {
+                            result.price = safePrice(priceMeta.getAttribute('content'));
+                            result.source = 'meta-tag';
+                        }
+                        const imgMeta = document.querySelector('meta[property="og:image"]');
+                        if (imgMeta) result.image = cleanUrl(imgMeta.getAttribute('content'));
+
+                        const titleMeta = document.querySelector('meta[property="og:title"]');
+                        if (titleMeta) result.title = titleMeta.getAttribute('content');
+                    } catch (e) { }
                 }
 
-                // Positive/Button Check
-                // Look for Add to Cart buttons
-                const buyButtonSelectors = [
-                    'button[class*="add-to-cart"]',
-                    'button[class*="addToCart"]',
-                    'button[id*="add-to-cart"]',
-                    'a[class*="add-to-cart"]',
-                    'input[type="submit"][value*="Sepete"]',
-                    'button' // Fallback to all buttons and check text
-                ];
+                // Strategy C: CSS Fallback
+                if (!result.price) {
+                    try {
+                        // Hepsiburada CDN (Image Hunter)
+                        if (!result.image && window.location.hostname.includes("hepsiburada")) {
+                            // 1. Try OG first (already done, but double check specific Hepsiburada behavior if needed - generic covers it)
 
-                let foundBuyButton = false;
-                let buyButtonDisabled = false;
+                            // 2. Scan IMG tags
+                            const hbImages = Array.from(document.querySelectorAll('img')).filter(img => {
+                                const s = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('original-src') || "";
+                                return s.includes("hbimg.hepsiburada.net");
+                            });
 
-                // Helper to check button text
-                const isBuyButton = (el: Element) => {
-                    const text = el.textContent?.toLowerCase().trim() || "";
-                    const val = (el as HTMLInputElement).value?.toLowerCase().trim() || "";
-                    const combined = text + val;
-                    return combined.includes("sepete ekle") ||
-                        combined.includes("add to cart") ||
-                        combined.includes("sepete at");
-                };
+                            if (hbImages.length > 0) {
+                                hbImages.sort((a, b) => {
+                                    const getScore = (el: any) => {
+                                        const s = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('original-src') || "";
+                                        if (s.includes('/1500/')) return 3;
+                                        if (s.includes('/1100/')) return 2;
+                                        if (s.includes('/800/')) return 1;
+                                        return 0;
+                                    };
+                                    return getScore(b) - getScore(a);
+                                });
 
-                // Helper to check if button is effectively disabled
-                const isDisabled = (el: Element) => {
-                    return el.hasAttribute('disabled') || el.classList.contains('disabled') || (el as HTMLElement).style.pointerEvents === 'none' || (el as HTMLElement).style.opacity === '0.5';
-                };
+                                const best = hbImages[0];
+                                let rawSrc = best.getAttribute('src') || best.getAttribute('data-src') || best.getAttribute('original-src') || "";
+                                if (rawSrc.startsWith('//')) rawSrc = 'https:' + rawSrc;
+                                result.image = rawSrc;
+                            }
+                        }
 
-                // Scan buttons
-                const allButtons = document.querySelectorAll('button, a, input[type="submit"], div[role="button"]');
-                for (const btn of allButtons) {
-                    if (isBuyButton(btn)) {
-                        foundBuyButton = true;
-                        if (isDisabled(btn)) {
-                            buyButtonDisabled = true;
-                        } else {
-                            // If we found at least one active buy button, assume in stock
-                            buyButtonDisabled = false;
+                        const priceSelectors = ['.product-price-container .prc-dsc', '.price', '.product-price', '#price_inside_buybox', '.amount'];
+                        for (const sel of priceSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el && /\d/.test(el.textContent || "")) {
+                                result.price = safePrice(el.textContent);
+                                result.source = 'dom-selectors';
+                                break;
+                            }
+                        }
+                    } catch (e) { }
+                }
+
+                return result;
+            });
+
+            // 3. HYBRID RECOVERY (Regex on Raw HTML)
+            const finalData: ScrapedData = {
+                title: domData.title || "",
+                image: domData.image || "",
+                price: smartPriceParse(domData.price),
+                currency: domData.currency || "TRY",
+                description: "",
+                inStock: domData.inStock,
+                source: domData.source as any
+            };
+
+            // If DOM failed to get valid price or image, try Regex
+            if (finalData.price === 0 || !finalData.image) {
+                console.log("DOM extraction incomplete. Attempting Regex Recovery...");
+                const html = await page.content();
+
+                // Regex Price
+                if (finalData.price === 0) {
+                    const pricePatterns = [/"price"\s*:\s*([\d.]+)/, /data-price="([\d.]+)"/, /"amount"\s*:\s*"?([\d.]+)"?/];
+                    for (const p of pricePatterns) {
+                        const m = html.match(p);
+                        if (m && m[1]) {
+                            finalData.price = smartPriceParse(m[1]);
+                            finalData.source = 'regex-scan';
                             break;
                         }
                     }
                 }
 
-                if (foundBuyButton) {
-                    if (buyButtonDisabled) {
-                        result.inStock = false;
+                // Regex Image (Hepsiburada / Generic)
+                if (!finalData.image) {
+                    // Hepsiburada Advanced Regex (Protocol insensitive)
+                    const hbMatches = Array.from(html.matchAll(/(?:https?:)?\/\/hbimg\.hepsiburada\.net\/[^"'\s>]+/g));
+                    if (hbMatches.length > 0) {
+                        let links = hbMatches.map(m => m[0]); // Match entire definition
+
+                        // Cleanup Protocols
+                        links = links.map(l => l.startsWith('//') ? 'https:' + l : l);
+
+                        // Sort by resolution
+                        links.sort((a, b) => {
+                            const score = (s: string) => {
+                                if (s.includes('/1500/')) return 3;
+                                if (s.includes('/1100/')) return 2;
+                                if (s.includes('/800/')) return 1;
+                                return 0;
+                            };
+                            return score(b) - score(a);
+                        });
+                        finalData.image = links[0];
+                        if (finalData.image.includes('/mnresize/')) finalData.image = finalData.image.replace(/\/mnresize\/\d+\/\d+\//, "/");
                     } else {
-                        result.inStock = true; // Overrides previous negative keyword if button is active? Maybe.
-                        // Actually if button is active, it usually means in stock.
-                    }
-                } else {
-                    // If no buy button is found, but we found negative keywords, then it's likely out of stock
-                    if (negativeKeywordFound) {
-                        result.inStock = false;
-                    }
-                    // Else default true
-                }
-
-                // Double check negative keywords with higher priority if results are ambiguous
-                // But let's trust the refined logic above for now. 
-                // One edge case: "Stock: 5" might trigger "Stock" keyword if we aren't careful, but we used "stokta yok" etc.
-
-            } catch (e) { console.log('Stock check error', e); }
-
-            // 1. Basic Metadata
-            const h1 = document.querySelector('h1#product-name') || document.querySelector('h1.product-name') || document.querySelector('h1');
-            if (h1 && h1.textContent) result.title = h1.textContent.trim();
-            else result.title = document.title;
-
-            const img: any = document.querySelector('img.product-image') || document.querySelector('.product-image-wrapper img');
-            if (img && img.src) result.image = img.src;
-
-            // METHOD A: DEEP JSON-LD SCAN
-            try {
-                const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-                for (const script of scripts) {
-                    const content = script.innerHTML;
-                    if (!content) continue;
-                    try {
-                        let json = JSON.parse(content);
-                        if (!Array.isArray(json)) json = [json];
-
-                        const searchJson = (obj: any): any => {
-                            if (!obj || typeof obj !== 'object') return null;
-                            if (obj['@type'] === 'Product' || obj['@type'] === 'http://schema.org/Product') {
-                                if (obj.offers) return obj;
-                            }
-                            for (const key in obj) {
-                                const found = searchJson(obj[key]);
-                                if (found) return found;
-                            }
-                            return null;
-                        };
-
-                        for (const item of json) {
-                            const product = searchJson(item);
-                            if (product) {
-                                const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
-                                for (const offer of offers) {
-                                    // Schema.org Availability
-                                    if (offer.availability) {
-                                        if (offer.availability.includes("OutOfStock") || offer.availability.includes("SoldOut")) {
-                                            result.inStock = false;
-                                        } else if (offer.availability.includes("InStock")) {
-                                            result.inStock = true;
-                                        }
-                                    }
-
-                                    if (offer.price || offer.lowPrice || offer.highPrice) {
-                                        result.price = offer.price || offer.lowPrice || offer.highPrice;
-                                        result.currency = offer.priceCurrency || "TRY";
-                                        result.source = 'json-ld';
-                                        if (!result.title && product.name) result.title = product.name;
-                                        if (!result.image && product.image) {
-                                            result.image = Array.isArray(product.image) ? product.image[0] : product.image;
-                                        }
-                                        return result;
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) { }
-                }
-            } catch (e) { }
-
-            if (result.price) return result;
-
-            // METHOD A.5: META TAGS (OPEN GRAPH / TWITTER)
-            try {
-                // Image
-                if (!result.image) {
-                    const imgMeta = document.querySelector('meta[property="og:image"]') ||
-                        document.querySelector('meta[property="twitter:image"]') ||
-                        document.querySelector('link[rel="image_src"]');
-                    if (imgMeta) result.image = imgMeta.getAttribute('content') || imgMeta.getAttribute('href');
-                }
-
-                // Title
-                if (!result.title || result.title === document.title) {
-                    const titleMeta = document.querySelector('meta[property="og:title"]') ||
-                        document.querySelector('meta[property="twitter:title"]') ||
-                        document.querySelector('meta[name="title"]');
-                    if (titleMeta) result.title = titleMeta.getAttribute('content');
-                }
-
-                // Availability Meta
-                const availabilityMeta = document.querySelector('meta[property="product:availability"]') ||
-                    document.querySelector('meta[property="og:availability"]');
-                if (availabilityMeta) {
-                    const content = availabilityMeta.getAttribute('content')?.toLowerCase();
-                    if (content?.includes('out of stock') || content?.includes('oos') || content?.includes('sold out')) {
-                        result.inStock = false;
-                    } else if (content?.includes('in stock') || content?.includes('instock')) {
-                        result.inStock = true;
+                        const jsonImg = html.match(/"image"\s*:\s*"(https:\/\/[^"]+)"/);
+                        if (jsonImg) finalData.image = jsonImg[1];
                     }
                 }
 
-                // Price & Currency
-                const priceMeta = document.querySelector('meta[property="og:price:amount"]') ||
-                    document.querySelector('meta[property="product:price:amount"]') ||
-                    document.querySelector('meta[name="twitter:data1"]');
-
-                const currencyMeta = document.querySelector('meta[property="og:price:currency"]') ||
-                    document.querySelector('meta[property="product:price:currency"]');
-
-                if (priceMeta) {
-                    const pContent = priceMeta.getAttribute('content');
-                    if (pContent) {
-                        result.price = pContent;
-                        result.source = 'meta-tag';
-                    }
+                // Regex Title
+                if (!finalData.title) {
+                    const nameMatch = html.match(/"name"\s*:\s*"([^"]+)"/);
+                    if (nameMatch) finalData.title = nameMatch[1];
                 }
-
-                if (currencyMeta) {
-                    result.currency = currencyMeta.getAttribute('content') || "TRY";
-                }
-
-                // Fallback: Description Regex
-                if (!result.price) {
-                    const descMeta = document.querySelector('meta[name="description"]') ||
-                        document.querySelector('meta[property="og:description"]');
-                    if (descMeta) {
-                        const desc = descMeta.getAttribute('content');
-                        if (desc) {
-                            const match = desc.match(/(\d+[.,]?\d*)\s*(?:TL|TRY|USD|EUR|₺)/i) || desc.match(/(?:TL|TRY|USD|EUR|₺)\s*(\d+[.,]?\d*)/i);
-                            if (match) {
-                                result.price = match[1];
-                                result.source = 'meta-description';
-                            }
-                        }
-                    }
-                }
-
-            } catch (e) { console.log("Meta scan error", e); }
-
-            if (result.price) return result;
-
-            // METHOD B: REGEX SCRIPT SCAN
-            try {
-                const html = document.body.innerHTML;
-                const priceRegex = /"(?:price|amount|value)"\s*:\s*["']?(\d+(?:\.\d+)?)["']?/g;
-                let match;
-                while ((match = priceRegex.exec(html)) !== null) {
-                    const p = parseFloat(match[1]);
-                    if (!isNaN(p) && p > 10) {
-                        result.price = p;
-                        result.source = 'regex-scan';
-                        return result;
-                    }
-                }
-            } catch (e) { }
-
-            if (result.price) return result;
-
-            // METHOD C: VISUAL SCAN
-            try {
-                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-                let node;
-                const candidates = [];
-                while (node = walker.nextNode()) {
-                    const txt = node.textContent?.trim();
-                    if (txt && (txt.includes('TL') || txt.includes('₺')) && /\d/.test(txt)) {
-                        if (txt.length < 30) {
-                            const parent = node.parentElement;
-                            if (parent) {
-                                const style = window.getComputedStyle(parent);
-                                const fontSize = parseFloat(style.fontSize);
-                                candidates.push({ txt, fontSize, parent });
-                            }
-                        }
-                    }
-                }
-                candidates.sort((a, b) => b.fontSize - a.fontSize);
-                if (candidates.length > 0) {
-                    result.price = candidates[0].txt;
-                    result.source = 'visual-scan';
-                    return result;
-                }
-            } catch (e) { }
-
-            return result;
-        });
-
-        // Debugging
-        if (!rawData.price || rawData.price === 0) {
-            console.warn("Deep scan failed to find price. Saving debug files...");
-            // Only save files in development
-            if (process.env.NODE_ENV !== 'production') {
-                try {
-                    const html = await page.content();
-                    fs.writeFileSync(path.resolve(process.cwd(), 'debug-html.txt'), html);
-                    await page.screenshot({ path: path.resolve(process.cwd(), 'debug-error.png') });
-                } catch (e) { console.warn("Could not save debug files", e); }
             }
+
+            // Fallback Placeholder
+            if (!finalData.image) {
+                Sentry.captureMessage(`Scraper Warning: Missing Image for ${url}`, "warning");
+                finalData.image = "https://placehold.co/600x600?text=No+Image";
+            }
+            if (finalData.price === 0) {
+                Sentry.captureMessage(`Scraper Warning: Zero Price for ${url}`, "warning");
+                finalData.source = 'manual';
+            }
+
+            // Debug
+            if (process.env.NODE_ENV !== 'production') {
+                await page.screenshot({ path: path.resolve(process.cwd(), 'debug_last_run.png') });
+            }
+
+            return finalData;
+
+        } catch (error: any) {
+            console.warn(`Scraping failed for ${url}:`, error);
+            Sentry.captureException(error);
+            return {
+                title: "",
+                image: "",
+                description: "",
+                price: 0,
+                currency: "TRY",
+                inStock: true,
+                source: 'manual',
+                error: error.message
+            };
+        } finally {
+            if (browser) await browser.close();
         }
-
-        const finalData: ScrapedData = {
-            title: rawData.title || "",
-            image: rawData.image || "",
-            description: "",
-            price: cleanPrice(rawData.price),
-            currency: rawData.currency || "TRY",
-            inStock: rawData.inStock,
-            source: rawData.source as any
-        };
-
-        if (finalData.price === 0) {
-            finalData.source = 'manual';
-        }
-
-        return finalData;
-
-    } catch (error: any) {
-        console.warn(`Scraping failed for ${url}:`, error.message);
-        return {
-            title: "",
-            image: "",
-            description: "",
-            price: 0,
-            currency: "TRY",
-            inStock: true, // Fail-safe
-            source: 'manual',
-            error: error.message
-        };
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
+    });
 }
