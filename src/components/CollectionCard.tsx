@@ -12,9 +12,30 @@ interface CollectionCardProps {
     onDelete: (e: React.MouseEvent, name: string) => void;
     onTogglePrivacy: (e: React.MouseEvent, name: string) => void;
     allowDelete?: boolean;
+    image?: string;
+    onUpdateImage?: (file: File, name: string) => Promise<void>;
 }
 
-export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTogglePrivacy, allowDelete = true }: CollectionCardProps) {
+
+export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTogglePrivacy, allowDelete = true, image, onUpdateImage }: CollectionCardProps) {
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = React.useState(false);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && onUpdateImage) {
+            try {
+                setIsUploading(true);
+                await onUpdateImage(file, name);
+            } catch (error) {
+                console.error("Upload failed", error);
+                alert("Failed to upload image.");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
     const handleShare = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -28,18 +49,36 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
         <div className="relative group aspect-square">
             <Link
                 href={`/collections/${encodeURIComponent(name)}`}
-                className="block w-full h-full bg-surface border border-surfaceHighlight p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 flex flex-col items-center justify-center text-center"
+                className="block w-full h-full bg-surface border border-surfaceHighlight p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 flex flex-col items-center justify-center text-center relative overflow-hidden group"
             >
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                    <Folder size={32} />
+                {/* Background Image */}
+                {image && (
+                    <div className="absolute inset-0 z-0">
+                        <img
+                            src={image}
+                            alt={name}
+                            className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    </div>
+                )}
+
+                <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform backdrop-blur-sm">
+                        <Folder size={32} />
+                    </div>
+                    <h3 className="font-bold text-[var(--text-main)] text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center drop-shadow-md">
+                        {name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground font-medium drop-shadow-md">{count} items</p>
                 </div>
-                <h3 className="font-bold text-[var(--text-main)] text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center">
-                    {name}
-                </h3>
-                <p className="text-sm text-muted-foreground font-medium">{count} items</p>
+
+
+
 
                 {/* Privacy Badge */}
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 z-20">
+
                     <button
                         onClick={(e) => {
                             e.preventDefault();
@@ -83,7 +122,36 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                         <Trash2 size={16} />
                     </button>
                 )}
+
+                {/* Camera / Upload Button (Temporarily Disabled) */}
+                {/* {onUpdateImage && (
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                        }}
+                        className="p-2 bg-surfaceHighlight hover:bg-blue-500 hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
+                        title="Change Cover Image"
+                        disabled={isUploading}
+                    >
+                        {isUploading ? (
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <span className="material-symbols-outlined text-[16px] leading-none">photo_camera</span>
+                        )}
+                    </button>
+                )} */}
+
             </div>
+            {/* Upload Input - Moved outside Link to prevent bubbling */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileSelect}
+            />
         </div>
     );
 }

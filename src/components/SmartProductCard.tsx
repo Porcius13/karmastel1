@@ -29,6 +29,10 @@ interface SmartProductCardProps {
 
 export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [] }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
+
+
+
     // Use local state for optimistic updates
     const [product, setProduct] = useState(initialProduct);
 
@@ -51,22 +55,23 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
         }
     };
 
-    const handleAddToCollection = async () => {
-        const currentCollection = product.collection || '';
-        const newCollection = prompt("Hangi koleksiyona eklemek istersiniz?", currentCollection);
-
-        if (newCollection !== null && newCollection !== currentCollection) {
+    const handleAddToCollection = (newCollection: string) => {
+        if (newCollection && newCollection !== product.collection) {
             // Optimistic update
             setProduct((prev) => ({ ...prev, collection: newCollection }));
-            try {
-                const docRef = doc(db, "products", product.id);
-                await updateDoc(docRef, { collection: newCollection });
-            } catch (e) {
+            setCollectionDropdownPos(null); // Close dropdown
+
+
+            // Async update
+            const docRef = doc(db, "products", product.id);
+            updateDoc(docRef, { collection: newCollection }).catch((e) => {
                 console.error("Error updating collection", e);
-                setProduct((prev) => ({ ...prev, collection: currentCollection }));
-            }
+                // Revert on error
+                setProduct((prev) => ({ ...prev, collection: product.collection }));
+            });
         }
     };
+
 
     // Format Price
     const numericPrice = typeof product.price === 'string'
@@ -149,13 +154,27 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         </button>
 
                         {/* Collection Button - Bottom Left */}
-                        <button
-                            onClick={handleAddToCollection}
-                            className="absolute bottom-4 left-4 bg-white text-black p-3 rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-500 hover:scale-110 shadow-lg pointer-events-auto"
-                            title="Koleksiyona Ekle"
-                        >
-                            <FolderPlus size={18} />
-                        </button>
+                        <div className="absolute bottom-4 left-4 group/collection">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    // Toggle logic: if open, close. if closed, open at new pos.
+                                    if (collectionDropdownPos) {
+                                        setCollectionDropdownPos(null);
+                                    } else {
+                                        setCollectionDropdownPos({ x: rect.left, y: rect.bottom + 8 });
+                                    }
+                                }}
+                                className="bg-white text-black p-3 rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-500 hover:scale-110 shadow-lg pointer-events-auto"
+                                title="Koleksiyona Ekle"
+                            >
+                                <FolderPlus size={18} />
+                            </button>
+                        </div>
+
+
 
                         {/* Delete Button (If provided) - Shifted Delay */}
                         {onDelete && (
@@ -217,6 +236,63 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 product={product}
                 collections={collections}
             />
+
+            {/* Collection Dropdown - Rendered at root with fixed positioning to escape overflow */}
+            {collectionDropdownPos && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 z-[60] bg-transparent"
+                        onClick={() => setCollectionDropdownPos(null)}
+                    />
+
+                    {/* Dropdown Menu */}
+                    <div
+                        className="fixed w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[70] animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                            top: collectionDropdownPos.y,
+                            left: collectionDropdownPos.x
+                        }}
+                    >
+                        <div className="p-2 max-h-48 overflow-y-auto">
+                            <div className="text-xs font-semibold text-slate-400 px-2 py-1 mb-1 uppercase tracking-wider">
+                                Koleksiyonlar
+                            </div>
+                            {collections.length > 0 ? (
+                                collections.map((col) => (
+                                    <button
+                                        key={col}
+                                        onClick={() => handleAddToCollection(col)}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${product.collection === col
+                                            ? 'bg-blue-50 text-blue-600 font-bold'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                            }`}
+                                    >
+                                        {product.collection === col && <CheckCircle2 size={14} />}
+                                        <span className="truncate">{col}</span>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="text-xs text-slate-400 px-3 py-2 italic text-center">
+                                    Koleksiyon yok
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-2 border-t border-slate-50 bg-slate-50">
+                            <button
+                                onClick={() => {
+                                    const newCol = prompt("Yeni koleksiyon adı:");
+                                    if (newCol) handleAddToCollection(newCol);
+                                }}
+                                className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 py-1"
+                            >
+                                + Yeni Oluştur
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
         </>
     );
 };

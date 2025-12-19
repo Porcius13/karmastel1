@@ -17,7 +17,8 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc'>('newest');
 
   // Collections State
-  const [collections, setCollections] = useState<string[]>(['Home Office', 'Living Room', 'Tech Setup', 'Sneakers']);
+  const [collections, setCollections] = useState<string[]>([]);
+
   const [activeCollection, setActiveCollection] = useState<string | null>(null);
 
   // Modals
@@ -50,7 +51,15 @@ export default function Home() {
       items.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
       setProducts(items);
+
+      // Extract unique collections from products
+      const uniqueCollections = Array.from(new Set(items.map((p: any) => p.collection).filter(Boolean))) as string[];
+      // Sort collections alphabetically or keep them in insertion order
+      uniqueCollections.sort();
+      setCollections(uniqueCollections);
+
       setLoading(false);
+
     });
     return () => unsubscribe();
   }, [user]);

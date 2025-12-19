@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { DashboardShell } from '@/components/DashboardShell';
 import { Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +14,7 @@ export default function CollectionsPage() {
     const { user } = useAuth();
     const [collectionsMap, setCollectionsMap] = useState<Record<string, number>>({});
     const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({});
+    const [collectionImages, setCollectionImages] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
 
     // Fetch Products (Counts)
@@ -52,13 +54,18 @@ export default function CollectionsPage() {
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const settings: Record<string, boolean> = {};
+            const images: Record<string, string> = {};
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.name) {
                     settings[data.name] = data.isPublic || false;
+                    if (data.image) {
+                        images[data.name] = data.image;
+                    }
                 }
             });
             setPrivacySettings(settings);
+            setCollectionImages(images);
         });
 
         return () => unsubscribe();
@@ -85,12 +92,10 @@ export default function CollectionsPage() {
             // For simplicity, let's assume standard names, but we'll stick to a query-friendly ID approach if possible?
             // Actually, querying by 'userId' and 'name' logic is better for robustness if IDs are tricky.
             // But setDoc needs an ID. Let's use a safe hashed-like ID or simple concatenation.
-            const docId = `${user.uid}_${collectionName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
-
-            // Wait, if we strip chars, we might collide.
-            // Better: Let's use btoa (Base64) for the ID part to be safe?
-            // Browsers support btoa.
-            const safeNameId = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(collectionName))) : collectionName;
+            // Base64Url encoding: replace + with -, / with _, and remove = padding
+            const safeNameId = typeof window !== 'undefined'
+                ? btoa(unescape(encodeURIComponent(collectionName))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                : collectionName;
             const docRef = doc(db, "collection_settings", `${user.uid}_${safeNameId}`);
 
             await setDoc(docRef, {
@@ -108,6 +113,43 @@ export default function CollectionsPage() {
             alert("Failed to update privacy settings.");
         }
     };
+
+    const handleUpdateImage = async (file: File, collectionName: string) => {
+        if (!user) return;
+
+        try {
+            // Create a safe reference for the file
+            // Path: collection-covers/{userId}/{collectionName_timestamp}
+            // Using timestamp to avoid caching issues on update
+            const safeName = collectionName.replace(/[^a-zA-Z0-9-_]/g, '');
+            const storagePath = `collection-covers/${user.uid}/${safeName}_${Date.now()}`;
+            const storageRef = ref(storage, storagePath);
+
+            // Upload
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            // Save to Firestore
+            // Re-using the same ID logic as Privacy settings: UID_Base64Name (URL safe)
+            const safeNameId = typeof window !== 'undefined'
+                ? btoa(unescape(encodeURIComponent(collectionName))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                : collectionName;
+            const docRef = doc(db, "collection_settings", `${user.uid}_${safeNameId}`);
+
+            await setDoc(docRef, {
+                userId: user.uid,
+                name: collectionName,
+                image: downloadURL,
+                updatedAt: new Date()
+            }, { merge: true });
+
+            console.log(`Image updated for ${collectionName}`);
+        } catch (error) {
+            console.error("Error updating image:", error);
+            throw error; // Rethrow so component can handle it (e.g. stop spinner)
+        }
+    };
+
 
     const handleDeleteCollection = async (e: React.MouseEvent, collectionName: string) => {
         // Double safety: stop propagation here too even though component does it
@@ -187,8 +229,10 @@ export default function CollectionsPage() {
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {collectionsList.map(([name, count]) => {
-                            // Generate a URL-safe share ID: UID + "_" + Base64Name
-                            const safeName = typeof window !== 'undefined' ? btoa(unescape(encodeURIComponent(name))) : name;
+                            // Generate a URL-safe share ID: UID + "_" + Base64Name (URL safe)
+                            const safeName = typeof window !== 'undefined'
+                                ? btoa(unescape(encodeURIComponent(name))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                                : name;
                             const shareId = `${user?.uid}_${safeName}`;
 
                             return (
@@ -201,6 +245,8 @@ export default function CollectionsPage() {
                                     onTogglePrivacy={handleTogglePrivacy}
                                     onDelete={handleDeleteCollection}
                                     allowDelete={name !== 'Uncategorized'}
+                                    image={collectionImages[name]}
+                                    onUpdateImage={handleUpdateImage}
                                 />
                             );
                         })}
