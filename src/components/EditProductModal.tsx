@@ -88,7 +88,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                                 value={targetPrice}
                                 onChange={(e) => setTargetPrice(e.target.value)}
                                 placeholder="Enter desired price..."
-                                className="w-full bg-[#1e3628] border border-primary/20 rounded-lg px-4 py-2 text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                className="w-full bg-surface border border-primary/20 rounded-lg px-4 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                             />
                             <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                                 <span className="text-primary font-bold text-sm">₺</span>

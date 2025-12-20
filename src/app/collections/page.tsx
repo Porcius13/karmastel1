@@ -10,11 +10,16 @@ import { useAuth } from '@/context/AuthContext';
 import { writeBatch, getDocs, deleteField } from 'firebase/firestore';
 import { CollectionCard } from '@/components/CollectionCard';
 
+// ... imports remain the same
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
+
 export default function CollectionsPage() {
     const { user } = useAuth();
     const [collectionsMap, setCollectionsMap] = useState<Record<string, number>>({});
     const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({});
     const [collectionImages, setCollectionImages] = useState<Record<string, string>>({});
+    const [availableCollectionNames, setAvailableCollectionNames] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
     // Fetch Products (Counts)
@@ -37,13 +42,12 @@ export default function CollectionsPage() {
                 }
             });
             setCollectionsMap(counts);
-            setLoading(false);
         });
 
         return () => unsubscribe();
     }, [user]);
 
-    // Fetch Privacy Settings
+    // Fetch Privacy Settings (Also serves as Source of Truth for Collections list)
     useEffect(() => {
         if (!user) return;
 
@@ -55,21 +59,28 @@ export default function CollectionsPage() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const settings: Record<string, boolean> = {};
             const images: Record<string, string> = {};
+            const names = new Set<string>();
+
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.name) {
+                    names.add(data.name);
                     settings[data.name] = data.isPublic || false;
-                    if (data.image) {
-                        images[data.name] = data.image;
+                    if (data.image || data.coverImage) {
+                        images[data.name] = data.image || data.coverImage;
                     }
                 }
             });
             setPrivacySettings(settings);
             setCollectionImages(images);
+            setAvailableCollectionNames(names);
+            setLoading(false);
         });
 
         return () => unsubscribe();
     }, [user]);
+
+    // ... handlers (handleTogglePrivacy, handleUpdateImage, handleDeleteCollection) remain the same...
 
     const handleTogglePrivacy = async (e: React.MouseEvent, collectionName: string) => {
         e.preventDefault();
@@ -84,15 +95,6 @@ export default function CollectionsPage() {
         setPrivacySettings(prev => ({ ...prev, [collectionName]: newStatus }));
 
         try {
-            // Using a composite ID safe for querying. 
-            // Note: If names have special chars (like slashes), this might be tricky for IDs.
-            // Using setDoc with merge to ensure we create or update.
-            // We store the 'name' field securely inside the doc so we can map it back.
-            // ID: user.uid + "_" + collectionName (sanitized or just strict)
-            // For simplicity, let's assume standard names, but we'll stick to a query-friendly ID approach if possible?
-            // Actually, querying by 'userId' and 'name' logic is better for robustness if IDs are tricky.
-            // But setDoc needs an ID. Let's use a safe hashed-like ID or simple concatenation.
-            // Base64Url encoding: replace + with -, / with _, and remove = padding
             const safeNameId = typeof window !== 'undefined'
                 ? btoa(unescape(encodeURIComponent(collectionName))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
                 : collectionName;
@@ -108,7 +110,6 @@ export default function CollectionsPage() {
             console.log(`Privacy for ${collectionName} set to ${newStatus}`);
         } catch (err) {
             console.error("Error toggling privacy:", err);
-            // Revert on error
             setPrivacySettings(prev => ({ ...prev, [collectionName]: currentStatus }));
             alert("Failed to update privacy settings.");
         }
@@ -118,19 +119,13 @@ export default function CollectionsPage() {
         if (!user) return;
 
         try {
-            // Create a safe reference for the file
-            // Path: collection-covers/{userId}/{collectionName_timestamp}
-            // Using timestamp to avoid caching issues on update
             const safeName = collectionName.replace(/[^a-zA-Z0-9-_]/g, '');
             const storagePath = `collection-covers/${user.uid}/${safeName}_${Date.now()}`;
             const storageRef = ref(storage, storagePath);
 
-            // Upload
             const snapshot = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            // Save to Firestore
-            // Re-using the same ID logic as Privacy settings: UID_Base64Name (URL safe)
             const safeNameId = typeof window !== 'undefined'
                 ? btoa(unescape(encodeURIComponent(collectionName))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
                 : collectionName;
@@ -146,30 +141,26 @@ export default function CollectionsPage() {
             console.log(`Image updated for ${collectionName}`);
         } catch (error) {
             console.error("Error updating image:", error);
-            throw error; // Rethrow so component can handle it (e.g. stop spinner)
+            throw error;
         }
     };
 
 
     const handleDeleteCollection = async (e: React.MouseEvent, collectionName: string) => {
-        // Double safety: stop propagation here too even though component does it
         e.preventDefault();
         e.stopPropagation();
 
-        console.log("Root Page: Delete requested for:", collectionName);
-
         if (!user) {
-            console.error("User not authenticated.");
             alert("Please login to perform this action.");
             return;
         }
 
-        // Use a slightly delayed confirm to ensure UI has updated from click
         setTimeout(async () => {
-            if (!confirm(`Are you sure you want to delete the collection "${collectionName}"? Items inside will be moved to Uncategorized.`)) return;
+            // START MODIFICATION: Update text to reflect that empty collections can be deleted too
+            if (!confirm(`Are you sure you want to delete the collection "${collectionName}"?`)) return;
 
             try {
-                // Find all products in this collection
+                // 1. Update products to be 'Uncategorized' if any
                 const q = query(
                     collection(db, "products"),
                     where("userId", "==", user.uid),
@@ -177,33 +168,46 @@ export default function CollectionsPage() {
                 );
 
                 const snapshot = await getDocs(q);
-                console.log(`Found ${snapshot.size} items to update.`);
-
-                if (snapshot.empty) {
-                    // Even if empty, we might want to "succeed" visually if it was just a glitch
-                    console.warn("Collection is empty or does not exist in backend.");
-                }
-
                 const batch = writeBatch(db);
 
                 snapshot.docs.forEach((doc) => {
                     batch.update(doc.ref, { collection: deleteField() });
                 });
 
+                // 2. Delete the collection setting document
+                // This removes it from the list of "created" collections
+                const safeNameId = typeof window !== 'undefined'
+                    ? btoa(unescape(encodeURIComponent(collectionName))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                    : collectionName;
+                const settingRef = doc(db, "collection_settings", `${user.uid}_${safeNameId}`);
+                batch.delete(settingRef);
+
                 await batch.commit();
                 console.log("Collection deleted successfully.");
-                alert(`Collection "${collectionName}" deleted successfully.`);
+                alert(`Collection "${collectionName}" deleted.`);
             } catch (error) {
                 console.error("Error deleting collection:", error);
-                alert("Failed to delete collection. See console for details.");
+                alert("Failed to delete collection.");
             }
         }, 50);
     };
 
-    const collectionsList = Object.entries(collectionsMap);
+    // MERGING LOGIC: Combine existing collections from products with created collections from settings
+    const allCollectionNames = new Set([
+        ...Object.keys(collectionsMap),
+        ...Array.from(availableCollectionNames)
+    ]);
+
+    // Sort logic needs to handle 'Uncategorized' separately?
+    // collectionsList is now an array of strings (names)
+    const sortedCollections = Array.from(allCollectionNames).sort((a, b) => {
+        if (a === 'Uncategorized') return 1; // Put at end
+        if (b === 'Uncategorized') return -1;
+        return a.localeCompare(b);
+    });
 
     return (
-        <DashboardShell collections={Object.keys(collectionsMap)}>
+        <DashboardShell collections={Array.from(allCollectionNames)}>
             <div className="space-y-8 pb-20">
                 <div className="flex items-center justify-between">
                     <div>
@@ -212,23 +216,32 @@ export default function CollectionsPage() {
                             Organize your items into folders.
                         </p>
                     </div>
+                    <Link href="/collections/create" className="bg-primary text-black font-bold px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-glow hover:shadow-glow-lg">
+                        <Plus size={20} />
+                        <span className="hidden sm:inline">Create Collection</span>
+                    </Link>
                 </div>
 
                 {loading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                ) : collectionsList.length === 0 ? (
+                ) : sortedCollections.length === 0 ? (
                     <div className="text-center py-20 bg-surface/50 rounded-3xl border border-surfaceHighlight">
                         <div className="w-16 h-16 bg-surfaceHighlight rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
                             <Folder size={32} />
                         </div>
                         <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">No collections yet</h3>
-                        <p className="text-muted-foreground mb-6">Start saving items to create your first collection.</p>
+                        <p className="text-muted-foreground mb-6">Create your first collection to start organizing.</p>
+                        <Link href="/collections/create" className="inline-flex items-center gap-2 bg-surfaceHighlight hover:bg-primary hover:text-black text-[var(--text-main)] px-6 py-3 rounded-xl font-bold transition-all">
+                            <Plus size={20} />
+                            Create Collection
+                        </Link>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {collectionsList.map(([name, count]) => {
+                        {sortedCollections.map((name) => {
+                            const count = collectionsMap[name] || 0;
                             // Generate a URL-safe share ID: UID + "_" + Base64Name (URL safe)
                             const safeName = typeof window !== 'undefined'
                                 ? btoa(unescape(encodeURIComponent(name))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')

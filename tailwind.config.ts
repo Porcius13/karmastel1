@@ -15,7 +15,11 @@ const config: Config = {
                 surfaceHighlight: "var(--surface-highlight)",
                 primary: {
                     DEFAULT: "var(--primary)",
-                    foreground: "#271A12" // Always dark text on peach buttons for accessibility
+                    foreground: "var(--primary-foreground)"
+                },
+                secondary: {
+                    DEFAULT: "var(--secondary)",
+                    foreground: "var(--secondary-foreground)"
                 },
                 // Foreground maps to the main text color variable
                 foreground: "var(--text-main)",
@@ -35,8 +39,8 @@ const config: Config = {
                 '2xl': "1.5rem"
             },
             boxShadow: {
-                // Vibrant peach glow
-                'glow': '0 0 40px -10px rgba(251, 146, 60, 0.4)',
+                // Vibrant glow using CSS variable for theme support
+                'glow': 'var(--shadow-glow)',
             }
         },
     },

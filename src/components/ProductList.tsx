@@ -52,10 +52,10 @@ export default function ProductList() {
     if (products.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="bg-gray-100 dark:bg-[#323122] p-6 rounded-full mb-4">
-                    <span className="material-symbols-outlined text-4xl text-gray-400">inventory_2</span>
+                <div className="bg-muted/10 p-6 rounded-full mb-4">
+                    <span className="material-symbols-outlined text-4xl text-muted-foreground">inventory_2</span>
                 </div>
-                <h3 className="text-lg font-bold text-[#181811] dark:text-white mb-2">Henüz Ürün Yok</h3>
+                <h3 className="text-lg font-bold text-foreground mb-2">Henüz Ürün Yok</h3>
                 <p className="text-gray-500 dark:text-gray-400 max-w-sm">
                     Yukarıdaki arama çubuğuna bir ürün linki yapıştırarak koleksiyonunuza eklemeye başlayın.
                 </p>
@@ -67,7 +67,7 @@ export default function ProductList() {
         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6 pb-12">
             {products.map((product) => (
                 <div key={product.id} className="break-inside-avoid group relative flex flex-col gap-3">
-                    <div className="relative w-full overflow-hidden rounded-xl bg-white dark:bg-[#2d2c1b]">
+                    <div className="relative w-full overflow-hidden rounded-xl bg-surface border border-border/50 hover:border-border transition-colors group" >
                         {/* Image */}
                         <img
                             alt={product.title}
@@ -104,10 +104,10 @@ export default function ProductList() {
                             {product.source || 'Website'}
                         </p>
                         <div className="flex justify-between items-start mt-0.5">
-                            <h3 className="text-base font-medium leading-tight text-[#181811] dark:text-white line-clamp-2" title={product.title}>
+                            <h3 className="text-base font-medium leading-tight text-foreground line-clamp-2" title={product.title}>
                                 {product.title}
                             </h3>
-                            <span className="text-base font-bold text-[#181811] dark:text-white shrink-0 ml-2">
+                            <span className="text-base font-bold text-foreground shrink-0 ml-2">
                                 {formatPrice(product.price, product.currency)}
                             </span>
                         </div>

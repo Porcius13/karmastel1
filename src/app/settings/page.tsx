@@ -50,10 +50,10 @@ export default function SettingsPage() {
 
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-surface rounded-2xl border border-surfaceHighlight/50">
-                        <SettingsIcon size={32} className="text-white" />
+                        <SettingsIcon size={32} className="text-foreground" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight">Settings</h1>
+                        <h1 className="text-3xl font-black text-foreground tracking-tight">Settings</h1>
                         <p className="text-muted-foreground">Manage your account and preferences.</p>
                     </div>
                 </div>
@@ -69,12 +69,12 @@ export default function SettingsPage() {
                                 <div className={`p-3 rounded-xl bg-white/5 ${item.color}`}>
                                     <item.icon size={24} />
                                 </div>
-                                <div className="p-2 rounded-full bg-transparent group-hover:bg-white/5 text-muted-foreground group-hover:text-white transition-colors">
+                                <div className="p-2 rounded-full bg-transparent group-hover:bg-white/5 text-muted-foreground group-hover:text-foreground transition-colors">
                                     <ChevronRight size={20} />
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
+                                <h3 className="text-lg font-bold text-foreground mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
                                     {item.description}
                                 </p>

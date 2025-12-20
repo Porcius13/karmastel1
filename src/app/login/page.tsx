@@ -20,6 +20,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     const { login, loginWithGoogle } = useAuth();
     const router = useRouter();
@@ -30,7 +31,7 @@ export default function LoginPage() {
         setError('');
 
         try {
-            await login(email, password);
+            await login(email, password, rememberMe);
             router.push('/dashboard');
         } catch (err: any) {
             console.error(err);
@@ -79,9 +80,9 @@ export default function LoginPage() {
                             <Mail size={20} />
                         </div>
                         <input
-                            type="email"
+                            type="text"
                             required
-                            placeholder="Email address"
+                            placeholder="Email or Username"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -110,7 +111,14 @@ export default function LoginPage() {
                         </button>
                     </div>
 
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${rememberMe ? 'bg-primary border-primary text-black' : 'border-muted-foreground/50 group-hover:border-primary'}`}>
+                                {rememberMe && <svg viewBox="0 0 12 12" className="w-3 h-3 fill-current"><path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" /></svg>}
+                            </div>
+                            <input type="checkbox" className="hidden" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+                            <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Remember me</span>
+                        </label>
                         <Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Forgot password?</Link>
                     </div>
 

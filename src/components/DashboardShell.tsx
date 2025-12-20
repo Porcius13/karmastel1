@@ -13,12 +13,14 @@ import {
     Bell,
     User,
     PanelLeft,
-    PanelLeftClose
+    PanelLeftClose,
+    LogOut
 } from 'lucide-react';
 
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface DashboardShellProps {
     children: React.ReactNode;
@@ -41,8 +43,32 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [productUrl, setProductUrl] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+
+    // Dropdown State
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
     const pathname = usePathname();
-    const { user } = useAuth();
+    const router = useRouter();
+    const { user, logout } = useAuth();
+
+    // Click Outside Listener
+    React.useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleLogout = async () => {
+        await logout();
+        router.push("/login");
+    };
 
     const handleUrlSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && productUrl.trim()) {
@@ -168,8 +194,49 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                             <Bell size={20} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
                         </button>
-                        <div className="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-muted-foreground md:hidden">
-                            <User size={16} />
+
+                        {/* Profile Dropdown */}
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex size-10 items-center justify-center rounded-full bg-surface hover:bg-muted/10 transition-colors overflow-hidden border border-border"
+                            >
+                                {user?.photoURL ? (
+                                    <img
+                                        alt="User Avatar"
+                                        className="w-full h-full object-cover"
+                                        src={user.photoURL}
+                                    />
+                                ) : (
+                                    <User size={20} className="text-muted-foreground" />
+                                )}
+                            </button>
+
+                            {isDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
+                                    <div className="p-4 border-b border-border bg-muted/50">
+                                        <p className="text-sm font-bold text-foreground truncate">{user?.displayName || (user as any)?.firstName || 'User'}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                                    </div>
+                                    <div className="p-2">
+                                        <Link
+                                            href="/settings/profile"
+                                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        >
+                                            <Settings size={16} />
+                                            Settings
+                                        </Link>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
+                                        >
+                                            <LogOut size={16} />
+                                            Log Out
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

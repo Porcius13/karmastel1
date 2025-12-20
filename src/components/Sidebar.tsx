@@ -47,7 +47,7 @@ export default function Sidebar({
     return (
         <aside
             className={`
-            h-full bg-surface border-r border-surfaceHighlight flex flex-col text-[var(--text-main)] flex-shrink-0 transition-all duration-300 ease-in-out
+            h-full bg-surface border-r border-surfaceHighlight flex flex-col text-foreground flex-shrink-0 transition-all duration-300 ease-in-out
             ${isCollapsed ? 'w-20 items-center' : 'w-72'}
             ${className}
           `}
@@ -72,8 +72,8 @@ export default function Sidebar({
             <nav className={`flex-1 py-6 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${isCollapsed ? 'px-2' : 'px-4'}`}>
 
                 <div className="mb-8">
-                    <button
-                        onClick={onAddCollection}
+                    <Link
+                        href="/collections/create"
                         className={`
                         flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-[var(--text-main)] rounded-xl transition-all border border-white/5 group
                         ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full p-3'}
@@ -82,7 +82,7 @@ export default function Sidebar({
                             <Plus size={16} />
                         </div>
                         {!isCollapsed && <span className="font-medium text-sm whitespace-nowrap">Add Collection</span>}
-                    </button>
+                    </Link>
                 </div>
 
                 <div className="space-y-1">
@@ -110,11 +110,11 @@ export default function Sidebar({
                                     flex items-center gap-3 rounded-lg transition-all duration-200 group cursor-pointer
                                     ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
                                     ${isActive
-                                        ? 'bg-primary text-black font-medium shadow-lg shadow-primary/20'
-                                        : 'text-muted-foreground hover:text-[var(--text-main)] hover:bg-white/5'}
+                                        ? 'bg-primary text-primary-foreground font-medium shadow-lg shadow-primary/20'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}
                                 `}
                             >
-                                <item.icon size={20} className={`shrink-0 ${isActive ? 'text-black' : 'text-muted-foreground group-hover:text-[var(--text-main)] transition-colors'}`} />
+                                <item.icon size={20} className={`shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground transition-colors'}`} />
                                 {!isCollapsed && (
                                     <>
                                         <span className="whitespace-nowrap">{item.name}</span>
@@ -128,7 +128,7 @@ export default function Sidebar({
                 <div className={`mt-8 space-y-1 ${isCollapsed ? 'hidden' : 'block'}`}>
                     <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center justify-between whitespace-nowrap">
                         <span>Collections</span>
-                        <button onClick={onAddCollection} className="hover:text-[var(--text-main)] transition-colors"><Plus size={14} /></button>
+                        <Link href="/collections/create" className="hover:text-foreground transition-colors"><Plus size={14} /></Link>
                     </h3>
                     {collections.map((col) => {
                         const isColActive = activeCollection === col;
@@ -137,7 +137,7 @@ export default function Sidebar({
                                 key={col}
                                 onClick={() => onSelectCollection?.(col)}
                                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group
-                                ${isColActive ? 'bg-white/10 text-[var(--text-main)]' : 'text-muted-foreground hover:text-[var(--text-main)] hover:bg-white/5'}
+                                ${isColActive ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}
                             `}
                             >
                                 <Hash size={18} className={`${isColActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'} transition-colors shrink-0`} />
@@ -151,7 +151,7 @@ export default function Sidebar({
             {/* Footer / User Profile */}
             <div className={`border-t border-surfaceHighlight/50 bg-background/20 mt-auto ${isCollapsed ? 'p-2' : 'p-4'}`}>
                 <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center mb-2' : 'mb-3'}`}>
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-[var(--text-main)] font-bold text-sm border-2 border-surface shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-foreground font-bold text-sm border-2 border-surface shrink-0">
                         MK
                         {isCollapsed && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background"></span>}
                     </div>
@@ -159,7 +159,7 @@ export default function Sidebar({
                     {!isCollapsed && (
                         <>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-[var(--text-main)] truncate">Miayis Kept</p>
+                                <p className="text-sm font-semibold text-foreground truncate">Miayis Kept</p>
                                 <p className="text-xs text-muted-foreground truncate">Free Plan</p>
                             </div>
                             <Link href="/settings" className="text-muted-foreground hover:text-primary transition-colors">

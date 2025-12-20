@@ -75,29 +75,29 @@ export const PriceChart: React.FC<PriceChartProps> = ({ history = [], currentPri
                 >
                     <defs>
                         <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f9f506" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#f9f506" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#E83C91" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#E83C91" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6E0F8" />
                     <XAxis
                         dataKey="displayDate"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        tick={{ fontSize: 10, fill: '#7D6E83' }}
                         dy={10}
                     />
                     <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        tick={{ fontSize: 10, fill: '#7D6E83' }}
                         tickFormatter={(value) => `₺${value}`}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Area
                         type="monotone"
                         dataKey="price"
-                        stroke="#f9f506"
+                        stroke="#E83C91"
                         strokeWidth={3}
                         fillOpacity={1}
                         fill="url(#colorPrice)"

@@ -2,7 +2,7 @@
 @config "../../tailwind.config.ts";
 
 /* 
-  Peachy Slate Design System 🍑🪨
+  Vintage Orchid Design System (Single Theme) 🪨
   A hybrid theme combining warm ivory tones with modern slate depth.
 */
 
@@ -12,46 +12,36 @@
 
 /* Base Styles with Theme Variables */
 @layer base {
-  :root {
-    /* LIGHT MODE (Peachy Glow) */
-    --background: #FFFAF0;
-    /* Warm Ivory */
-    --surface: #FFFFFF;
-    /* Pure White */
-    --surface-highlight: #FFF7ED;
-    /* Very light peach/orange wash */
-    --primary: #FDBA74;
-    /* Soft Peach */
-    --border: #EAD0C0;
-    /* Soft Peach Border */
 
-    --text-main: #271A12;
-    /* Deep Warm Brown (Foreground) */
-    --muted: #EAD0C0;
-    /* Muted border-like */
-    --muted-foreground: #785C48;
-    /* Medium Brown */
+  /* DEFAULT THEME (VINTAGE ORCHID) */
+  :root {
+    --background: #FFFFFF;
+    --surface: #F9F5F8;
+    --surface-highlight: #F2EBF0;
+    --primary: #6D466B;
+    --primary-foreground: #FFFFFF;
+    --secondary: #B49FCC;
+    --secondary-foreground: #412234;
+    --border: #6D466B;
+    --text-main: #412234;
+    --muted: #B49FCC;
+    --muted-foreground: #8B6B85;
+    --shadow-glow: 0 0 40px -10px rgba(109, 70, 107, 0.4);
   }
 
   .dark {
-    /* DARK MODE (Modern Slate) */
-    --background: #0F172A;
-    /* Deep Slate */
-    --surface: #1E293B;
-    /* Slate Gray */
-    --surface-highlight: #334155;
-    /* Lighter Slate for hover */
-    --primary: #FB923C;
-    /* Vibrant Peach - Pops on dark */
-    --border: #334155;
-    /* Slate Border */
-
-    --text-main: #F8FAFC;
-    /* Clean White (Slate-tinted) */
-    --muted: #334155;
-    /* Muted border-like */
-    --muted-foreground: #94A3B8;
-    /* Muted Slate Blue/Gray */
+    --background: #09090B;
+    --surface: #18181B;
+    --surface-highlight: #27272A;
+    --primary: #B49FCC;
+    --primary-foreground: #09090B;
+    --secondary: #6D466B;
+    --secondary-foreground: #F4F4F5;
+    --border: #27272A;
+    --text-main: #F4F4F5;
+    --muted: #27272A;
+    --muted-foreground: #A1A1AA;
+    --shadow-glow: 0 0 40px -10px rgba(180, 159, 204, 0.3);
   }
 
   body {

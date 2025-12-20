@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthContextProvider } from "@/context/AuthContext";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export default function RootLayout({
   children,
@@ -36,6 +37,7 @@ export default function RootLayout({
         >
           <AuthContextProvider>
             {children}
+            <ThemeSwitcher />
           </AuthContextProvider>
         </ThemeProvider>
       </body>

@@ -17,8 +17,8 @@ interface AuthContextType {
     loading: boolean;
     loginWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
-    login: (email: string, password: string) => Promise<void>;
-    signup: (email: string, password: string) => Promise<void>;
+    login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
+    signup: (email: string, password: string, userData: { firstName: string; lastName: string; username: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -47,8 +47,35 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const login = async (email: string, password: string) => {
+    const login = async (identifier: string, password: string, rememberMe: boolean = false) => {
         try {
+            // Import persistence persistence
+            const { setPersistence, browserLocalPersistence, browserSessionPersistence } = await import("firebase/auth");
+
+            // Set persistence based on checkbox
+            await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+
+            let email = identifier;
+
+            // Simple check if identifier is an email
+            const isEmail = identifier.includes('@');
+
+            if (!isEmail) {
+                // If not an email, assume it's a username and look it up
+                const { getFirestore, collection, query, where, getDocs } = await import("firebase/firestore");
+                const db = getFirestore();
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("username", "==", identifier));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    throw new Error("User not found");
+                }
+
+                // Get the email from the first matching document
+                email = querySnapshot.docs[0].data().email;
+            }
+
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Login Error", error);
@@ -56,9 +83,21 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
-    const signup = async (email: string, password: string) => {
+    const signup = async (email: string, password: string, userData: { firstName: string; lastName: string; username: string }) => {
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            const { user } = await createUserWithEmailAndPassword(auth, email, password);
+            // Create user document in Firestore
+            const { doc, setDoc, getFirestore } = await import("firebase/firestore");
+            const db = getFirestore();
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                email: user.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                username: userData.username,
+                createdAt: new Date().toISOString(),
+                photoURL: user.photoURL || null,
+            });
         } catch (error) {
             console.error("Signup Error", error);
             throw error;

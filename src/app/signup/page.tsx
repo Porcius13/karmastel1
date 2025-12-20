@@ -15,8 +15,12 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function SignupPage() {
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -29,8 +33,14 @@ export default function SignupPage() {
         setIsLoading(true);
         setError('');
 
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            await signup(email, password);
+            await signup(email, password, { firstName, lastName, username });
             router.push('/dashboard');
         } catch (err: any) {
             console.error(err);
@@ -76,6 +86,41 @@ export default function SignupPage() {
                 )}
 
                 <form onSubmit={handleSignup} className="space-y-4">
+                    {/* Name Fields */}
+                    <div className="flex gap-4">
+                        <div className="relative group w-1/2">
+                            <input
+                                type="text"
+                                required
+                                placeholder="First Name"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                            />
+                        </div>
+                        <div className="relative group w-1/2">
+                            <input
+                                type="text"
+                                required
+                                placeholder="Last Name"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Username */}
+                    <div className="relative group">
+                        <input
+                            type="text"
+                            required
+                            placeholder="Username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                        />
+                    </div>
                     {/* Email */}
                     <div className="relative group">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -111,6 +156,21 @@ export default function SignupPage() {
                         >
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
+                            <Lock size={20} />
+                        </div>
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            required
+                            placeholder="Confirm Password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                        />
                     </div>
 
                     <button

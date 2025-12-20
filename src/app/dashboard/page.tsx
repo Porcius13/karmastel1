@@ -6,18 +6,21 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, deleteDo
 import { DashboardShell } from '@/components/DashboardShell';
 import { SmartProductCard } from '@/components/SmartProductCard';
 import { PriceChart } from '@/components/PriceChart';
-import { LayoutGrid, ListFilter, Search } from 'lucide-react';
+import { LayoutGrid, ListFilter, Search, List } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'in_stock' | 'price_drop'>('all');
+  const [activeSource, setActiveSource] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc' | 'alpha_asc' | 'alpha_desc'>('newest');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Collections State
   const [collections, setCollections] = useState<string[]>([]);
+  const [sources, setSources] = useState<string[]>([]); // Unique sources
 
   const [activeCollection, setActiveCollection] = useState<string | null>(null);
 
@@ -30,12 +33,43 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
+    // 1. Products Listener
+    const qProducts = query(
       collection(db, "products"),
       where("userId", "==", user.uid)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    // 2. Collections Listener
+    const qCollections = query(
+      collection(db, "collection_settings"),
+      where("userId", "==", user.uid)
+    );
+
+    let fetchedProducts: any[] = [];
+    let fetchedCollections: string[] = [];
+
+    // Combine updates
+    const updateState = () => {
+      // Extract unique collections from products (legacy/implicit)
+      const productCollections = new Set(fetchedProducts.map((p: any) => p.collection).filter(Boolean));
+
+      // Context merge: explicit collections + implicit ones
+      const allCollections = Array.from(new Set([...fetchedCollections, ...Array.from(productCollections)]));
+      allCollections.sort();
+
+      setCollections(allCollections);
+
+      // Extract unique sources
+      const uniqueSources = Array.from(new Set(fetchedProducts.map((p: any) => p.source).filter(Boolean))) as string[];
+      uniqueSources.sort();
+      setSources(uniqueSources);
+
+      setProducts(fetchedProducts);
+      setLoading(false);
+    };
+
+
+    const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
       const items = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -46,23 +80,27 @@ export default function Home() {
           collection: data.collection || 'Uncategorized' // Default collection
         };
       });
-
-      // Initial sort by newest to allow client-side sorting consistency
+      // Initial sort by newest
       items.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-      setProducts(items);
-
-      // Extract unique collections from products
-      const uniqueCollections = Array.from(new Set(items.map((p: any) => p.collection).filter(Boolean))) as string[];
-      // Sort collections alphabetically or keep them in insertion order
-      uniqueCollections.sort();
-      setCollections(uniqueCollections);
-
-      setLoading(false);
-
+      fetchedProducts = items;
+      updateState();
     });
-    return () => unsubscribe();
+
+    const unsubscribeCollections = onSnapshot(qCollections, (snapshot) => {
+      const cols = snapshot.docs.map(doc => doc.data().name);
+      fetchedCollections = cols;
+      updateState();
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeCollections();
+    };
   }, [user]);
+
+  // Debugging
+  // console.log("Dashboard Collections State:", collections);
 
   // Filter & Sort Logic
   const filteredProducts = products
@@ -70,6 +108,11 @@ export default function Home() {
       // 0. Collection Filter
       if (activeCollection && activeCollection !== 'all') {
         if (p.collection !== activeCollection) return false;
+      }
+
+      // 0.5 Source Filter
+      if (activeSource) {
+        if (p.source !== activeSource) return false;
       }
 
       // 1. Status Filter
@@ -92,6 +135,10 @@ export default function Home() {
           return (a.price || 0) - (b.price || 0);
         case 'price_desc':
           return (b.price || 0) - (a.price || 0);
+        case 'alpha_asc':
+          return a.title.localeCompare(b.title);
+        case 'alpha_desc':
+          return b.title.localeCompare(a.title);
         case 'newest':
         default:
           return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
@@ -155,7 +202,7 @@ export default function Home() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">
+          <h2 className="text-3xl font-black text-foreground tracking-tight">
             {activeCollection ? activeCollection : 'All Items'}
           </h2>
           <p className="text-muted-foreground mt-1">
@@ -165,26 +212,54 @@ export default function Home() {
 
         {/* Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 font-medium">
+          {/* View Toggle */}
+          <div className="flex bg-surface rounded-lg p-1 mr-2 border border-border/50">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Grid View"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              title="List View"
+            >
+              <List size={18} />
+            </button>
+          </div>
+
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'all' ? 'bg-primary text-black' : 'bg-surface text-white hover:bg-surfaceHighlight'}`}
+            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'all' && !activeSource ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            All Items <span className="opacity-60 ml-1 text-xs">({products.length})</span>
+            All
           </button>
+
+          {/* Source Filter */}
+          <select
+            value={activeSource || ''}
+            onChange={(e) => setActiveSource(e.target.value || null)}
+            className={`px-4 py-2 rounded-lg appearance-none cursor-pointer transition-colors font-medium border-none outline-none ${activeSource ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
+          >
+            <option value="" className="bg-surface text-foreground">All Stores</option>
+            {sources.map(s => (
+              <option key={s} value={s} className="bg-surface text-foreground">{s}</option>
+            ))}
+          </select>
+
           <button
             onClick={() => setFilter('in_stock')}
-            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'in_stock' ? 'bg-primary text-black' : 'bg-surface text-white hover:bg-surfaceHighlight'}`}
+            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'in_stock' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
             In Stock
           </button>
           <button
             onClick={() => setFilter('price_drop')}
-            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'price_drop' ? 'bg-primary text-black' : 'bg-surface text-white hover:bg-surfaceHighlight'}`}
+            className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'price_drop' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            Price Drops
-          </button>
-          <button className="bg-surface p-2 rounded-lg text-white hover:bg-surfaceHighlight ml-2">
-            <LayoutGrid size={20} />
+            Deals
           </button>
 
           {/* Sort Dropdown */}
@@ -192,11 +267,13 @@ export default function Home() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="appearance-none bg-surface text-white pl-4 pr-10 py-2 rounded-lg hover:bg-surfaceHighlight focus:outline-none cursor-pointer font-medium"
+              className="appearance-none bg-surface text-foreground pl-4 pr-10 py-2 rounded-lg hover:bg-surfaceHighlight focus:outline-none cursor-pointer font-medium min-w-[140px]"
             >
               <option value="newest">Newest</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
+              <option value="alpha_asc">Name: A-Z</option>
+              <option value="alpha_desc">Name: Z-A</option>
             </select>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
               <ListFilter size={16} />
@@ -215,7 +292,7 @@ export default function Home() {
           <div className="w-16 h-16 bg-surfaceHighlight rounded-full flex items-center justify-center mb-4 text-muted-foreground">
             <Search size={32} />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">
+          <h3 className="text-xl font-bold text-foreground mb-2">
             {searchQuery ? "No results found" : "No items found"}
           </h3>
           <p className="text-muted-foreground max-w-sm mx-auto mb-6">
@@ -233,11 +310,17 @@ export default function Home() {
           )}
         </div>
       ) : (
-        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+        <div className={`
+            ${viewMode === 'grid'
+            ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6'
+            : 'flex flex-col gap-4'
+          }
+        `}>
           {filteredProducts.map((product) => (
             <SmartProductCard
               key={product.id}
               product={product}
+              viewMode={viewMode}
               onSetAlarm={() => handleSetAlarm(product)}
               onOpenChart={() => setChartProduct(product)}
               onDelete={() => handleDelete(product)}

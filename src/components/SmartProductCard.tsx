@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
 import { db } from "@/lib/firebase";
@@ -25,11 +26,16 @@ interface SmartProductCardProps {
     onOpenChart?: () => void;
     onDelete?: () => void;
     collections?: string[]; // Needed for Edit Modal
+    viewMode?: 'grid' | 'list';
 }
 
-export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [] }) => {
+export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [], viewMode = 'grid' }) => {
+    const router = useRouter();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
+
+    // Debugging
+    // console.log("SmartProductCard Collections:", collections);
 
 
 
@@ -85,13 +91,104 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
     // Check Badge Logic
     const isTargetMet = product.targetPrice && numericPrice && numericPrice <= product.targetPrice;
 
+    const renderActionButtons = (isList: boolean) => {
+        const btnClass = (extra: string = "") => `p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 pointer-events-auto flex items-center justify-center ${extra}`;
+        const animClass = isList ? "" : "transform translate-y-8 group-hover:translate-y-0";
+
+        return (
+            <>
+                {/* Edit Button */}
+                <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className={btnClass(`bg-white text-black hover:bg-black hover:text-white ${animClass}`)}
+                    title="Düzenle"
+                >
+                    <Pencil size={18} />
+                </button>
+
+                {product.inStock ? (
+                    <a
+                        href={product.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={btnClass(`bg-white text-black hover:bg-primary ${animClass} delay-75`)}
+                        title="Ürüne Git"
+                    >
+                        <ExternalLink size={20} />
+                    </a>
+                ) : (
+                    <button
+                        onClick={onSetAlarm}
+                        className={btnClass(`bg-surfaceHighlight text-[var(--text-main)] hover:bg-danger ${animClass} delay-75`)}
+                        title="Stok Alarmı Kur"
+                    >
+                        <Bell size={20} />
+                    </button>
+                )}
+
+                {/* Analysis/Chart Button */}
+                <button
+                    onClick={onOpenChart}
+                    className={btnClass(`bg-white text-black hover:bg-primary ${animClass} delay-100`)}
+                    title="Fiyat Analizi"
+                >
+                    <TrendingDown size={20} />
+                </button>
+
+                {/* Favorite Button */}
+                <button
+                    onClick={handleToggleFavorite}
+                    className={btnClass(`bg-white ${product.isFavorite ? 'text-red-500 hover:bg-red-50' : 'text-black hover:bg-red-50 hover:text-red-500'} ${isList ? '' : 'absolute bottom-4 right-4'} `)}
+                    title="Favorilere Ekle/Çıkar"
+                >
+                    <Heart size={18} fill={product.isFavorite ? "currentColor" : "none"} />
+                </button>
+
+                {/* Collection Button */}
+                <div className={`${isList ? '' : 'absolute bottom-4 left-4'} group/collection`}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            if (collectionDropdownPos) {
+                                setCollectionDropdownPos(null);
+                            } else {
+                                setCollectionDropdownPos({ x: rect.left, y: rect.bottom + 8 });
+                            }
+                        }}
+                        className={btnClass(`bg-white text-black hover:bg-blue-50 hover:text-blue-500`)}
+                        title="Koleksiyona Ekle"
+                    >
+                        <FolderPlus size={18} />
+                    </button>
+                </div>
+
+                {/* Delete Button */}
+                {onDelete && (
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete();
+                        }}
+                        className={btnClass(`bg-black/50 text-white hover:bg-red-500 delay-300`)}
+                        title="Sil"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                )}
+            </>
+        );
+    };
+
     return (
         <>
-            <div className="break-inside-avoid group relative flex flex-col mb-6">
+            <div className={`break-inside-avoid group relative flex ${viewMode === 'list' ? 'flex-row items-center gap-4 bg-surface p-4 rounded-2xl shadow-sm' : 'flex-col mb-6'}`}>
                 {/* Image Container */}
                 <div className={`
-                    relative w-full overflow-hidden rounded-2xl bg-surface shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:shadow-primary/10
-                    ${product.aspect || 'aspect-square'}
+                    relative overflow-hidden rounded-xl bg-surface shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:shadow-primary/10
+                    ${viewMode === 'list' ? 'w-24 h-24 shrink-0' : (product.aspect || 'aspect-square') + ' w-full'}
                 `}>
                     <Link href={`/product/${product.id}`} className="block h-full cursor-pointer">
                         <img
@@ -104,92 +201,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     </Link>
 
                     {/* Overlay & Actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 backdrop-blur-[2px] pointer-events-none">
-
-                        {/* Edit Button */}
-                        <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="bg-white text-black p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-black hover:text-white hover:scale-110 shadow-lg pointer-events-auto"
-                            title="Düzenle"
-                        >
-                            <Pencil size={18} />
-                        </button>
-
-                        {product.inStock ? (
-                            <a
-                                href={product.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-white text-black p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary hover:scale-110 shadow-lg pointer-events-auto delay-75"
-                                title="Ürüne Git"
-                            >
-                                <ExternalLink size={20} />
-                            </a>
-                        ) : (
-                            <button
-                                onClick={onSetAlarm}
-                                className="bg-surfaceHighlight text-[var(--text-main)] p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-danger hover:scale-110 shadow-lg pointer-events-auto delay-75"
-                                title="Stok Alarmı Kur"
-                            >
-                                <Bell size={20} />
-                            </button>
-                        )}
-
-                        {/* Analysis/Chart Button - Centered */}
-                        <button
-                            onClick={onOpenChart}
-                            className="bg-white text-black p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary hover:scale-110 shadow-lg delay-100 pointer-events-auto"
-                            title="Fiyat Analizi"
-                        >
-                            <TrendingDown size={20} />
-                        </button>
-
-                        {/* Favorite Button - Bottom Right */}
-                        <button
-                            onClick={handleToggleFavorite}
-                            className={`absolute bottom-4 right-4 bg-white p-3 rounded-full transition-all duration-300 hover:scale-110 shadow-lg pointer-events-auto ${product.isFavorite ? 'text-red-500 hover:bg-red-50' : 'text-black hover:bg-red-50 hover:text-red-500'}`}
-                            title="Favorilere Ekle/Çıkar"
-                        >
-                            <Heart size={18} fill={product.isFavorite ? "currentColor" : "none"} />
-                        </button>
-
-                        {/* Collection Button - Bottom Left */}
-                        <div className="absolute bottom-4 left-4 group/collection">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    // Toggle logic: if open, close. if closed, open at new pos.
-                                    if (collectionDropdownPos) {
-                                        setCollectionDropdownPos(null);
-                                    } else {
-                                        setCollectionDropdownPos({ x: rect.left, y: rect.bottom + 8 });
-                                    }
-                                }}
-                                className="bg-white text-black p-3 rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-500 hover:scale-110 shadow-lg pointer-events-auto"
-                                title="Koleksiyona Ekle"
-                            >
-                                <FolderPlus size={18} />
-                            </button>
-                        </div>
-
-
-
-                        {/* Delete Button (If provided) - Shifted Delay */}
-                        {onDelete && (
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onDelete();
-                                }}
-                                className="bg-black/50 text-white p-3 rounded-full transform translate-y-8 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:scale-110 shadow-lg delay-300 pointer-events-auto"
-                                title="Sil"
-                            >
-                                <Trash2 size={20} />
-                            </button>
-                        )}
+                    <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 flex items-center justify-center gap-3 backdrop-blur-[2px] pointer-events-none ${viewMode === 'grid' ? 'opacity-0 group-hover:opacity-100' : 'hidden'}`}>
+                        {viewMode === 'grid' && renderActionButtons(false)}
                     </div>
 
                     {/* Status Badges */}
@@ -207,16 +220,18 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             </span>
                         )}
 
-                        <div className="bg-background/80 backdrop-blur px-3 py-1.5 rounded-lg border border-white/5">
-                            <span className={`text-sm font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
-                                {formattedPrice}
-                            </span>
-                        </div>
+                        {viewMode !== 'list' && (
+                            <div className="bg-background/80 backdrop-blur px-3 py-1.5 rounded-lg border border-white/5">
+                                <span className={`text-sm font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
+                                    {formattedPrice}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* Meta Info */}
-                <div className="mt-3 px-1">
+                <div className={`mt-3 px-1 ${viewMode === 'list' ? 'flex-1 mt-0' : ''}`}>
                     <h3 className="text-sm font-medium leading-snug text-[var(--text-main)] line-clamp-2 group-hover:text-primary transition-colors">
                         {product.title}
                     </h3>
@@ -227,6 +242,23 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         </div>
                     )}
                 </div>
+
+                {/* List View Actions */}
+                {viewMode === 'list' && (
+                    <div className="flex items-center gap-4 ml-auto pr-2">
+                        <div className="text-right">
+                            <div className={`text-lg font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
+                                {formattedPrice}
+                            </div>
+                            {product.targetPrice && !isTargetMet && (
+                                <div className="text-xs text-muted-foreground">
+                                    Hedef: {product.targetPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                                </div>
+                            )}
+                        </div>
+                        {renderActionButtons(true)}
+                    </div>
+                )}
             </div>
 
             {/* Edit Modal */}
@@ -280,10 +312,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         </div>
                         <div className="p-2 border-t border-slate-50 bg-slate-50">
                             <button
-                                onClick={() => {
-                                    const newCol = prompt("Yeni koleksiyon adı:");
-                                    if (newCol) handleAddToCollection(newCol);
-                                }}
+                                onClick={() => router.push('/collections/create')}
                                 className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 py-1"
                             >
                                 + Yeni Oluştur
@@ -292,7 +321,6 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     </div>
                 </>
             )}
-
         </>
     );
 };

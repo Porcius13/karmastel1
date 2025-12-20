@@ -29,17 +29,15 @@ export default function LandingPage() {
                         <span className="text-xl font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</span>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-                        <Link href="#features" className="hover:text-primary transition-colors">How it works</Link>
-                        <Link href="#pricing" className="hover:text-primary transition-colors">Pricing</Link>
-                        <ThemeToggle />
+                    <div className="hidden md:flex items-center gap-4 text-sm font-medium text-muted-foreground">
                         <Link href="/login" className="text-foreground hover:text-primary transition-colors">Sign In</Link>
                         <Link
-                            href="/login"
+                            href="/signup"
                             className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full font-bold hover:shadow-glow transition-all hover:scale-105"
                         >
                             Get Started
                         </Link>
+                        <ThemeToggle />
                     </div>
 
                     <div className="md:hidden flex items-center gap-4">
@@ -82,7 +80,7 @@ export default function LandingPage() {
 
                         <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                             <Link
-                                href="/login"
+                                href="/signup"
                                 className="bg-primary text-primary-foreground px-8 py-4 rounded-full font-bold text-lg hover:shadow-glow transition-all hover:scale-[1.02]"
                             >
                                 Get Extension
@@ -199,7 +197,7 @@ export default function LandingPage() {
 
                     <div className="flex flex-col items-center gap-4">
                         <Link
-                            href="/login"
+                            href="/signup"
                             className="bg-primary text-primary-foreground px-10 py-5 rounded-full font-bold text-xl hover:shadow-glow transition-all hover:scale-105"
                         >
                             Get Started for Free
