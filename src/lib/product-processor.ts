@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import { scrapeProduct } from "@/lib/scraper";
 import * as Sentry from "@sentry/nextjs";
 
@@ -74,6 +74,39 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
         });
 
         console.log(`Processing: Saved to ${targetCollection}`);
+
+        // 4. Auto-Set Collection Cover Image if missing
+        // Only if we have a valid image and a specific collection (not Uncategorized)
+        if (targetCollection === "products" && productData.image && productData.collection && productData.collection !== 'Uncategorized') {
+            try {
+                const colName = productData.collection;
+                // Encode safe ID (Server-side compatible version of UI logic)
+                // UI: btoa(unescape(encodeURIComponent(name)))
+                const safeNameId = Buffer.from(encodeURIComponent(colName)).toString('base64')
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+
+                const colSettingsRef = doc(db, "collection_settings", `${userId}_${safeNameId}`);
+                const colDoc = await getDoc(colSettingsRef);
+
+                if (!colDoc.exists() || !colDoc.data().image) {
+                    await setDoc(colSettingsRef, {
+                        userId: userId,
+                        name: colName,
+                        image: productData.image,
+                        updatedAt: new Date(), // using Date object for direct write, simpler than serverTimestamp here
+                        // Default to private if creating new
+                        isPublic: colDoc.exists() ? colDoc.data().isPublic : false
+                    }, { merge: true });
+                    console.log(`Processing: Auto-set cover image for collection '${colName}'`);
+                }
+            } catch (coverError) {
+                console.error("Processing: Failed to update collection cover:", coverError);
+                // Don't fail the whole request just for the cover image
+            }
+        }
+
         return { success: true, collection: targetCollection, id: docRef.id };
 
     } catch (dbError: any) {

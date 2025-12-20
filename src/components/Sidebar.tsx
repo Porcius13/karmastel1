@@ -14,7 +14,8 @@ import {
     Settings,
     PanelLeftClose,
     LogOut,
-    Infinity as InfinityIcon
+    Infinity as InfinityIcon,
+    Compass
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,6 +38,7 @@ export default function Sidebar({
     const pathname = usePathname();
 
     const menuItems = [
+        { name: 'Discover', icon: Compass, href: '/discover' },
         { name: 'All Items', icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
         { name: 'Collections', icon: Folder, href: '/collections' },
         { name: 'Favorites', icon: Heart, href: '/favorites' },
@@ -55,17 +57,13 @@ export default function Sidebar({
 
             {/* Header / Logo */}
             <div className={`h-20 flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-6'} border-b border-surfaceHighlight/50 transition-all duration-300`}>
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black shrink-0">
-                        <InfinityIcon size={20} />
-                    </div>
+                <Link href="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+                    <img src="/brand-logo-light.png" alt="Kept Logo" className="w-12 h-12 object-contain rounded-xl block dark:hidden" />
+                    <img src="/brand-logo-dark.png" alt="Kept Logo" className="w-12 h-12 object-contain rounded-xl hidden dark:block" />
                     {!isCollapsed && (
-                        <h1 className="text-xl font-bold tracking-tight animate-in fade-in duration-300 whitespace-nowrap">Kept.</h1>
+                        <h1 className="text-3xl animate-in fade-in duration-300 whitespace-nowrap text-[#412234] dark:text-[#FAF0E7]" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</h1>
                     )}
-                </div>
-                {!isCollapsed && (
-                    <></>
-                )}
+                </Link>
             </div>
 
             {/* Main Navigation */}
@@ -148,34 +146,7 @@ export default function Sidebar({
                 </div>
             </nav>
 
-            {/* Footer / User Profile */}
-            <div className={`border-t border-surfaceHighlight/50 bg-background/20 mt-auto ${isCollapsed ? 'p-2' : 'p-4'}`}>
-                <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center mb-2' : 'mb-3'}`}>
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-foreground font-bold text-sm border-2 border-surface shrink-0">
-                        MK
-                        {isCollapsed && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background"></span>}
-                    </div>
 
-                    {!isCollapsed && (
-                        <>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-foreground truncate">Miayis Kept</p>
-                                <p className="text-xs text-muted-foreground truncate">Free Plan</p>
-                            </div>
-                            <Link href="/settings" className="text-muted-foreground hover:text-primary transition-colors">
-                                <Settings size={20} />
-                            </Link>
-                        </>
-                    )}
-                </div>
-
-                {!isCollapsed && (
-                    <button className="w-full flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-danger hover:bg-danger/10 p-2 rounded-lg transition-colors">
-                        <LogOut size={16} />
-                        <span>Sign Out</span>
-                    </button>
-                )}
-            </div>
         </aside>
     );
 }

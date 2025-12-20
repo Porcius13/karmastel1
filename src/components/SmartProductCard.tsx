@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
+import { useAuth } from '@/context/AuthContext';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
@@ -18,6 +19,10 @@ interface Product {
     collection?: string;
     targetPrice?: number;
     isFavorite?: boolean;
+    userId?: string;
+    originalSourceId?: string;
+    createdAt?: string | any;
+    updatedAt?: any;
 }
 
 interface SmartProductCardProps {
@@ -46,35 +51,81 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
     // Actually, usually we rely on parent to re-render, but for optimistic updates without parent handler, we need local state.
     // Ideally we should sync back up or just rely on re-fetch, but let's do local + firestore.
 
+    const { user } = useAuth();
+    const isOwner = user?.uid === product.userId;
+
     const handleToggleFavorite = async () => {
+        if (!user) {
+            alert("Favorilere eklemek için giriş yapmalısınız.");
+            return;
+        }
+
         const newStatus = !product.isFavorite;
         // Optimistic update
         setProduct((prev) => ({ ...prev, isFavorite: newStatus }));
 
         try {
-            const docRef = doc(db, "products", product.id);
-            await updateDoc(docRef, { isFavorite: newStatus });
+            if (isOwner) {
+                // If owner, toggle existing field
+                const docRef = doc(db, "products", product.id);
+                await updateDoc(docRef, { isFavorite: newStatus });
+            } else {
+                // If NOT owner, clone to my products
+                if (newStatus) {
+                    const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+                    const newProductData = {
+                        ...product,
+                        userId: user.uid,
+                        isFavorite: true,
+                        originalSourceId: product.id,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: serverTimestamp()
+                    };
+                    // Remove ID from source to let Firestore gen new one
+                    const { id, ...dataToSave } = newProductData;
+                    await addDoc(collection(db, "products"), dataToSave);
+                    console.log("Product cloned to favorites");
+                }
+                // If unliking a non-owned product, we technically can't "delete" the copy we just made 
+                // without knowing its ID. For MVP, we just let "unfavorite" be a visual toggle 
+                // that doesn't delete the COPY (unless we tracked it).
+                // Or we restricts "Unfavorite" on non-owned items.
+            }
         } catch (e) {
             console.error("Error updating favorite", e);
             // Revert
             setProduct((prev) => ({ ...prev, isFavorite: !newStatus }));
+            alert("İşlem sırasında bir hata oluştu.");
         }
     };
 
-    const handleAddToCollection = (newCollection: string) => {
+    const handleAddToCollection = async (newCollection: string) => {
         if (newCollection && newCollection !== product.collection) {
-            // Optimistic update
-            setProduct((prev) => ({ ...prev, collection: newCollection }));
             setCollectionDropdownPos(null); // Close dropdown
 
+            // Instead of moving (updateDoc), we CLONE (addDoc) to the new collection.
+            // This allows the product to exist in multiple collections (as separate entries).
+            try {
+                const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
 
-            // Async update
-            const docRef = doc(db, "products", product.id);
-            updateDoc(docRef, { collection: newCollection }).catch((e) => {
-                console.error("Error updating collection", e);
-                // Revert on error
-                setProduct((prev) => ({ ...prev, collection: product.collection }));
-            });
+                const newProductData = {
+                    ...product,
+                    collection: newCollection,
+                    originalSourceId: product.id, // Track origin if needed
+                    createdAt: new Date().toISOString(),
+                    updatedAt: serverTimestamp()
+                };
+
+                // Remove ID so it generates a new one
+                const { id, ...dataToSave } = newProductData;
+
+                await addDoc(collection(db, "products"), dataToSave);
+                alert(`Product added to ${newCollection}!`);
+
+            } catch (e) {
+                console.error("Error adding to collection", e);
+                alert("Failed to add to collection.");
+            }
         }
     };
 

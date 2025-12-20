@@ -26,9 +26,39 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
             const productRef = doc(db, "products", product.id);
             await updateDoc(productRef, {
                 title,
-                collection,
+                collection: collection === 'Uncategorized' ? null : collection, // Convert 'Uncategorized' back to explicit null or handle consistency
                 targetPrice: targetPrice ? Number(targetPrice) : null
             });
+
+            // Auto-Set Collection Cover Logic (Client-Side)
+            if (collection && collection !== 'Uncategorized' && product.image) {
+                try {
+                    // 1. Generate ID
+                    const safeName = typeof window !== 'undefined'
+                        ? btoa(unescape(encodeURIComponent(collection))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                        : collection;
+                    const settingsId = `${product.userId}_${safeName}`;
+
+                    // 2. Check Existance
+                    const { getDoc, setDoc } = await import("firebase/firestore");
+                    const settingsRef = doc(db, "collection_settings", settingsId);
+                    const settingsDoc = await getDoc(settingsRef);
+
+                    if (!settingsDoc.exists() || !settingsDoc.data().image) {
+                        await setDoc(settingsRef, {
+                            userId: product.userId,
+                            name: collection,
+                            image: product.image,
+                            updatedAt: new Date(),
+                            isPublic: settingsDoc.exists() ? settingsDoc.data().isPublic : false
+                        }, { merge: true });
+                        console.log("Auto-set cover image for edited collection");
+                    }
+                } catch (err) {
+                    console.error("Failed to auto-set cover:", err);
+                }
+            }
+
             onClose();
         } catch (error) {
             console.error("Error updating product:", error);

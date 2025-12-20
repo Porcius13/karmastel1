@@ -19,6 +19,8 @@ interface AuthContextType {
     logout: () => Promise<void>;
     login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
     signup: (email: string, password: string, userData: { firstName: string; lastName: string; username: string }) => Promise<void>;
+    sendVerification: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -40,7 +42,28 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const loginWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Check if user document exists in Firestore
+            const { getFirestore, doc, getDoc, setDoc } = await import("firebase/firestore");
+            const db = getFirestore();
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (!userDocSnap.exists()) {
+                // Create new user document
+                await setDoc(userDocRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    firstName: user.displayName?.split(' ')[0] || '',
+                    lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                    username: user.email?.split('@')[0] || user.uid.substring(0, 8), // Default username
+                    createdAt: new Date().toISOString(),
+                    photoURL: user.photoURL || null,
+                });
+            }
+
         } catch (error) {
             console.error("Google Sign-In Error", error);
             throw error;
@@ -98,10 +121,28 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
                 createdAt: new Date().toISOString(),
                 photoURL: user.photoURL || null,
             });
+
+            // Send verification email
+            const { sendEmailVerification } = await import("firebase/auth");
+            await sendEmailVerification(user);
+
         } catch (error) {
             console.error("Signup Error", error);
             throw error;
         }
+    }
+
+    // Helper to manually trigger it
+    const sendVerification = async () => {
+        if (auth.currentUser) {
+            const { sendEmailVerification } = await import("firebase/auth");
+            await sendEmailVerification(auth.currentUser);
+        }
+    }
+
+    const resetPassword = async (email: string) => {
+        const { sendPasswordResetEmail } = await import("firebase/auth");
+        await sendPasswordResetEmail(auth, email);
     }
 
     const logout = async () => {
@@ -113,7 +154,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, login, signup }}>
+        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, login, signup, sendVerification, resetPassword }}>
             {children}
         </AuthContext.Provider>
     );

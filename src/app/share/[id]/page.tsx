@@ -138,7 +138,7 @@ export default function SharedCollectionPage() {
             {/* Header */}
             <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <Link href="/" className="text-xl font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</Link>
+                    <Link href="/" className="text-2xl tracking-wider hover:scale-105 transition-transform text-[#412234] dark:text-[#FAF0E7]" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</Link>
                     <Link href="/signup" className="text-sm font-bold text-primary hover:underline">Create your own wishlist</Link>
                 </div>
             </header>

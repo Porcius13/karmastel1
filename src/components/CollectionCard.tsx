@@ -64,9 +64,11 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                 )}
 
                 <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform backdrop-blur-sm">
-                        <Folder size={32} />
-                    </div>
+                    {!image && (
+                        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform backdrop-blur-sm">
+                            <Folder size={32} />
+                        </div>
+                    )}
                     <h3 className="font-bold text-[var(--text-main)] text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center drop-shadow-md">
                         {name}
                     </h3>

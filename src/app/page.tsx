@@ -23,10 +23,9 @@ export default function LandingPage() {
             <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-glow">
-                            <InfinityIcon size={20} />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</span>
+                        <img src="/brand-logo-light.png" alt="FAVDUCK Logo" className="w-10 h-10 object-contain block dark:hidden" />
+                        <img src="/brand-logo-dark.png" alt="FAVDUCK Logo" className="w-10 h-10 object-contain hidden dark:block" />
+                        <span className="text-2xl animate-in fade-in duration-300 whitespace-nowrap text-[#412234] dark:text-[#FAF0E7]" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</span>
                     </div>
 
                     <div className="hidden md:flex items-center gap-4 text-sm font-medium text-muted-foreground">
@@ -138,7 +137,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center max-w-2xl mx-auto mb-16">
                         <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4 font-[family-name:Space_Grotesk] text-foreground">
-                            How <span className="text-primary">Kept</span> works.
+                            How <span className="text-primary" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</span> works.
                         </h2>
                         <p className="text-muted-foreground text-lg">
                             Three simple steps to regain control of your online shopping chaos.
@@ -192,7 +191,7 @@ export default function LandingPage() {
                         <span className="text-primary">digital life?</span>
                     </h2>
                     <p className="text-xl text-muted-foreground">
-                        Join 10,000+ curators saving time and money with Kept.
+                        Join 10,000+ curators saving time and money with FAVDUCK.
                     </p>
 
                     <div className="flex flex-col items-center gap-4">
@@ -214,10 +213,9 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 mb-12">
                     <div className="col-span-1 md:col-span-2 space-y-4">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
-                                <InfinityIcon size={14} />
-                            </div>
-                            <span className="text-lg font-bold tracking-tight font-[family-name:Space_Grotesk]">Kept.</span>
+                            <img src="/brand-logo-light.png" alt="FAVDUCK Logo" className="w-12 h-12 object-contain block dark:hidden" />
+                            <img src="/brand-logo-dark.png" alt="FAVDUCK Logo" className="w-12 h-12 object-contain hidden dark:block" />
+                            <span className="text-3xl animate-in fade-in duration-300 whitespace-nowrap text-[#412234] dark:text-[#FAF0E7]" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</span>
                         </div>
                         <p className="text-muted-foreground max-w-xs text-sm">
                             The universal wishlist and price tracker for the modern web. Curate your world with ease.
@@ -246,7 +244,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="max-w-7xl mx-auto pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-                    <p>© 2024 Kept Inc. All rights reserved.</p>
+                    <p>© 2024 FAVDUCK Inc. All rights reserved.</p>
                     <div className="flex gap-6">
                         <Link href="#" className="hover:text-foreground transition-colors">Privacy Policy</Link>
                         <Link href="#" className="hover:text-foreground transition-colors">Terms of Service</Link>

@@ -19,6 +19,8 @@ import {
 
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationDropdown } from './NotificationDropdown';
+import { NotificationService } from '@/lib/notification-service';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -48,6 +50,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
+    // Notification State
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+    const notifRef = React.useRef<HTMLDivElement>(null);
+
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
@@ -58,12 +65,26 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
             }
+            if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+                setIsNotifOpen(false);
+            }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
+
+    // Listen for notification count
+    React.useEffect(() => {
+        if (!user) return;
+
+        const unsubscribe = NotificationService.subscribeToNotifications(user.uid, (notifs) => {
+            setUnreadNotifCount(notifs.filter(n => !n.isRead).length);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
 
     const handleLogout = async () => {
         await logout();
@@ -190,10 +211,26 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2 md:gap-4 ml-auto">
                         <ThemeToggle />
-                        <button className="relative p-2 text-muted-foreground hover:text-[var(--text-main)] transition-colors rounded-full hover:bg-surface">
-                            <Bell size={20} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
-                        </button>
+
+
+                        <div className="relative" ref={notifRef}>
+                            <button
+                                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                className="relative p-2 text-muted-foreground hover:text-[var(--text-main)] transition-colors rounded-full hover:bg-surface"
+                            >
+                                <Bell size={20} />
+                                {unreadNotifCount > 0 && (
+                                    <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background animate-pulse"></span>
+                                )}
+                            </button>
+                            {user && (
+                                <NotificationDropdown
+                                    userId={user.uid}
+                                    isOpen={isNotifOpen}
+                                    onClose={() => setIsNotifOpen(false)}
+                                />
+                            )}
+                        </div>
 
                         {/* Profile Dropdown */}
                         <div className="relative" ref={dropdownRef}>
@@ -214,11 +251,15 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
                             {isDropdownOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
-                                    <div className="p-4 border-b border-border bg-muted/50">
-                                        <p className="text-sm font-bold text-foreground truncate">{user?.displayName || (user as any)?.firstName || 'User'}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                                    </div>
                                     <div className="p-2">
+                                        <Link
+                                            href={`/user/${user?.uid}`}
+                                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        >
+                                            <User size={16} />
+                                            Profile
+                                        </Link>
                                         <Link
                                             href="/settings/profile"
                                             className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/50 transition-colors"

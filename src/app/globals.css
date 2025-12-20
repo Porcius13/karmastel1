@@ -13,32 +13,38 @@
 /* Base Styles with Theme Variables */
 @layer base {
 
-  /* DEFAULT THEME (VINTAGE ORCHID) */
+  /* FAVDUCK OPTION A THEME */
   :root {
     --background: #FFFFFF;
-    --surface: #F9F5F8;
-    --surface-highlight: #F2EBF0;
+    --foreground: #412234;
+    --surface: #FDFCFD;
+    --surface-secondary: #F4F4F5;
+    /* Light grey/off-white for secondary surfaces */
     --primary: #6D466B;
     --primary-foreground: #FFFFFF;
     --secondary: #B49FCC;
     --secondary-foreground: #412234;
-    --border: #6D466B;
+    --border: #EAD7D7;
     --text-main: #412234;
-    --muted: #B49FCC;
-    --muted-foreground: #8B6B85;
+    --text-muted: #64748B;
+    --muted: #E2E8F0;
+    --muted-foreground: #64748B;
     --shadow-glow: 0 0 40px -10px rgba(109, 70, 107, 0.4);
   }
 
   .dark {
     --background: #09090B;
+    --foreground: #F4F4F5;
     --surface: #18181B;
-    --surface-highlight: #27272A;
+    --surface-secondary: #27272A;
+    /* Darker slate for secondary surfaces */
     --primary: #B49FCC;
     --primary-foreground: #09090B;
     --secondary: #6D466B;
     --secondary-foreground: #F4F4F5;
     --border: #27272A;
     --text-main: #F4F4F5;
+    --text-muted: #A1A1AA;
     --muted: #27272A;
     --muted-foreground: #A1A1AA;
     --shadow-glow: 0 0 40px -10px rgba(180, 159, 204, 0.3);

@@ -7,6 +7,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "**",
       },
+      {
+        protocol: "http",
+        hostname: "**",
+      },
     ],
   },
   // Explicitly externalize these packages for Vercel/Serverless environment

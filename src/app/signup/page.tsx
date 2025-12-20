@@ -41,7 +41,7 @@ export default function SignupPage() {
 
         try {
             await signup(email, password, { firstName, lastName, username });
-            router.push('/dashboard');
+            router.push('/verify-email');
         } catch (err: any) {
             console.error(err);
             // Enhanced error handling

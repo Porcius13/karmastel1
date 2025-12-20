@@ -19,10 +19,11 @@ export default function CollectionsPage() {
     const [collectionsMap, setCollectionsMap] = useState<Record<string, number>>({});
     const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({});
     const [collectionImages, setCollectionImages] = useState<Record<string, string>>({});
+    const [collectionFirstImages, setCollectionFirstImages] = useState<Record<string, string>>({}); // Fallback images from products
     const [availableCollectionNames, setAvailableCollectionNames] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
-    // Fetch Products (Counts)
+    // Fetch Products (Counts & Fallback Images)
     useEffect(() => {
         if (!user) return;
 
@@ -33,15 +34,22 @@ export default function CollectionsPage() {
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const counts: Record<string, number> = {};
+            const firstImages: Record<string, string> = {};
+
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.collection) {
                     counts[data.collection] = (counts[data.collection] || 0) + 1;
+                    // Capture first image found for this collection as fallback
+                    if (data.image && !firstImages[data.collection]) {
+                        firstImages[data.collection] = data.image;
+                    }
                 } else {
                     counts['Uncategorized'] = (counts['Uncategorized'] || 0) + 1;
                 }
             });
             setCollectionsMap(counts);
+            setCollectionFirstImages(firstImages);
         });
 
         return () => unsubscribe();
@@ -258,7 +266,7 @@ export default function CollectionsPage() {
                                     onTogglePrivacy={handleTogglePrivacy}
                                     onDelete={handleDeleteCollection}
                                     allowDelete={name !== 'Uncategorized'}
-                                    image={collectionImages[name]}
+                                    image={collectionImages[name] || collectionFirstImages[name]} // Prefer explicit setting, fallback to first product image
                                     onUpdateImage={handleUpdateImage}
                                 />
                             );

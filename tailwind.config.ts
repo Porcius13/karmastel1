@@ -9,10 +9,17 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            fontFamily: {
+                sans: ['var(--font-noto)', 'sans-serif'],
+                display: ['var(--font-jakarta)', 'sans-serif'],
+            },
             colors: {
                 background: "var(--background)",
-                surface: "var(--surface)",
-                surfaceHighlight: "var(--surface-highlight)",
+                surface: {
+                    DEFAULT: "var(--surface)",
+                    secondary: "var(--surface-secondary)"
+                },
+                // surfaceHighlight: "var(--surface-highlight)", // Removing unused
                 primary: {
                     DEFAULT: "var(--primary)",
                     foreground: "var(--primary-foreground)"

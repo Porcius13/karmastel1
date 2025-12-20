@@ -149,7 +149,7 @@ export default function NotificationSettingsPage() {
                             <div className="bg-surfaceHighlight/20 p-4 rounded-xl flex gap-3 items-start mt-2">
                                 <Info size={16} className="text-primary mt-0.5" />
                                 <p className="text-xs text-muted-foreground">
-                                    SMS Alerts are available exclusively on the <span className="text-white font-bold">Kept Pro</span> plan due to carrier costs. Upgrade to enable.
+                                    SMS Alerts are available exclusively on the <span className="text-white font-bold" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK Pro</span> plan due to carrier costs. Upgrade to enable.
                                 </p>
                             </div>
                         </div>

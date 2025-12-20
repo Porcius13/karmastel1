@@ -8,10 +8,21 @@ import { SmartProductCard } from '@/components/SmartProductCard';
 import { PriceChart } from '@/components/PriceChart';
 import { LayoutGrid, ListFilter, Search, List } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Verification Check
+  useEffect(() => {
+    if (user && !user.emailVerified) {
+      router.push('/verify-email');
+    }
+  }, [user, router]);
+
   const [filter, setFilter] = useState<'all' | 'in_stock' | 'price_drop'>('all');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,8 +37,6 @@ export default function Home() {
 
   // Modals
   const [chartProduct, setChartProduct] = useState<any>(null);
-
-  const { user } = useAuth();
 
   // Firestore Listener
   useEffect(() => {
@@ -125,6 +134,21 @@ export default function Home() {
         const matchTitle = p.title?.toLowerCase().includes(query);
         const matchSource = p.source?.toLowerCase().includes(query);
         return matchTitle || matchSource;
+      }
+      return true;
+    })
+    .filter((p, index, self) => {
+      // 2.5 Deduplication Logic for "All Items" View
+      // If we are showing specific collection, duplicates shouldn't theoretically happen (unless data error).
+      // If we are showing ALL ITEMS, we must filter out clones.
+      // Rule: Prefer the "original" or the first one encountered.
+      // Uniqueness key: originalSourceId (if it's a clone) OR id (if it's original).
+      // Actually simpler: if products share the same `url` (and are owned by me), they are the same item.
+      // Let's use `url` as the primary key for uniqueness in the master list.
+
+      if (!activeCollection || activeCollection === 'all') {
+        const indexFirst = self.findIndex(t => t.url === p.url);
+        return indexFirst === index;
       }
       return true;
     })

@@ -119,7 +119,7 @@ export default function LoginPage() {
                             <input type="checkbox" className="hidden" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                             <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Remember me</span>
                         </label>
-                        <Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Forgot password?</Link>
+                        <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary transition-colors">Forgot password?</Link>
                     </div>
 
                     <button
