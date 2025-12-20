@@ -72,6 +72,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
         let docId = "";
 
         if (adminDb) {
+            console.log("Processing: Using Admin SDK for database save");
             // Use Admin SDK (Bypasses rules)
             const docRef = await adminDb.collection(targetCollection).add({
                 ...productData,
@@ -79,6 +80,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             });
             docId = docRef.id;
         } else {
+            console.warn("Processing: Admin SDK not available, falling back to Client SDK (Will likely fail in prod)");
             // Fallback to client SDK (Might fail in prod if no auth)
             const docRef = await addDoc(collection(db, targetCollection), {
                 ...productData,
