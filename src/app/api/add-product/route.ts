@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error("Product Processing Error:", error);
         return NextResponse.json(
-            { success: false, error: "Failed to process product" },
+            { success: false, error: error instanceof Error ? error.message : "Failed to process product" },
             { status: 500, headers: corsHeaders() }
         );
     }

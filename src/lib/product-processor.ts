@@ -1,5 +1,7 @@
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { scrapeProduct } from "@/lib/scraper";
 import * as Sentry from "@sentry/nextjs";
 
@@ -33,7 +35,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             image: scraped.image,
             currency: scraped.currency,
             inStock: scraped.inStock,
-            source: scraped.source || new URL(url).hostname.replace('www.', ''),
+            source: scraped.source || (url ? new URL(url).hostname.replace('www.', '') : 'unknown'),
             status: 'active',
             isScrapeFailed: false,
             userId: userId,
@@ -60,63 +62,79 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             inStock: true,
             error: true,
             isScrapeFailed: true,
-            source: new URL(url).hostname.replace('www.', ''),
+            source: url ? new URL(url).hostname.replace('www.', '') : 'unknown',
             status: 'needs_review',
             userId: userId
         };
     }
 
     try {
-        // 3. Save to appropriate Firestore collection
-        const docRef = await addDoc(collection(db, targetCollection), {
-            ...productData,
-            createdAt: serverTimestamp()
-        });
+        let docId = "";
 
-        console.log(`Processing: Saved to ${targetCollection}`);
+        if (adminDb) {
+            // Use Admin SDK (Bypasses rules)
+            const docRef = await adminDb.collection(targetCollection).add({
+                ...productData,
+                createdAt: FieldValue.serverTimestamp()
+            });
+            docId = docRef.id;
+        } else {
+            // Fallback to client SDK (Might fail in prod if no auth)
+            const docRef = await addDoc(collection(db, targetCollection), {
+                ...productData,
+                createdAt: serverTimestamp()
+            });
+            docId = docRef.id;
+        }
+
+        console.log(`Processing: Saved to ${targetCollection} with ID ${docId}`);
 
         // 4. Auto-Set Collection Cover Image if missing
-        // Only if we have a valid image and a specific collection (not Uncategorized)
         if (targetCollection === "products" && productData.image && productData.collection && productData.collection !== 'Uncategorized') {
             try {
                 const colName = productData.collection;
-                // Encode safe ID (Server-side compatible version of UI logic)
-                // UI: btoa(unescape(encodeURIComponent(name)))
                 const safeNameId = Buffer.from(encodeURIComponent(colName)).toString('base64')
                     .replace(/\+/g, '-')
                     .replace(/\//g, '_')
                     .replace(/=+$/, '');
 
-                const colSettingsRef = doc(db, "collection_settings", `${userId}_${safeNameId}`);
-                const colDoc = await getDoc(colSettingsRef);
+                const docPath = `collection_settings/${userId}_${safeNameId}`;
 
-                if (!colDoc.exists() || !colDoc.data().image) {
-                    await setDoc(colSettingsRef, {
-                        userId: userId,
-                        name: colName,
-                        image: productData.image,
-                        updatedAt: new Date(), // using Date object for direct write, simpler than serverTimestamp here
-                        // Default to private if creating new
-                        isPublic: colDoc.exists() ? colDoc.data().isPublic : false
-                    }, { merge: true });
-                    console.log(`Processing: Auto-set cover image for collection '${colName}'`);
+                if (adminDb) {
+                    const colRef = adminDb.doc(docPath);
+                    const colSnap = await colRef.get();
+                    if (!colSnap.exists || !colSnap.data()?.image) {
+                        await colRef.set({
+                            userId: userId,
+                            name: colName,
+                            image: productData.image,
+                            updatedAt: FieldValue.serverTimestamp(),
+                            isPublic: colSnap.exists ? colSnap.data()?.isPublic : false
+                        }, { merge: true });
+                    }
+                } else {
+                    const colSettingsRef = doc(db, "collection_settings", `${userId}_${safeNameId}`);
+                    const colDoc = await getDoc(colSettingsRef);
+                    if (!colDoc.exists() || !colDoc.data().image) {
+                        await setDoc(colSettingsRef, {
+                            userId: userId,
+                            name: colName,
+                            image: productData.image,
+                            updatedAt: new Date(),
+                            isPublic: colDoc.exists() ? colDoc.data().isPublic : false
+                        }, { merge: true });
+                    }
                 }
             } catch (coverError) {
                 console.error("Processing: Failed to update collection cover:", coverError);
-                // Don't fail the whole request just for the cover image
             }
         }
 
-        return { success: true, collection: targetCollection, id: docRef.id };
+        return { success: true, collection: targetCollection, id: docId };
 
     } catch (dbError: any) {
-        console.error("Processing: Firestore Save Error:", dbError);
-        Sentry.captureException(dbError, {
-            tags: {
-                worker: "product-processor",
-                action: "firestore-save"
-            }
-        });
-        throw new Error("Database save failed");
+        console.error("Processing: Database Save Error:", dbError);
+        Sentry.captureException(dbError);
+        throw new Error(`Database save failed: ${dbError.message}`);
     }
 }
