@@ -288,10 +288,11 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         <img
                             alt={product.title}
                             className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock ? 'grayscale opacity-60' : ''}`}
-                            src={product.image || "https://placehold.co/600x600?text=No+Image"}
+                            src={product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image")}
                             referrerPolicy="no-referrer"
-                            crossOrigin="anonymous"
-                            onError={(e) => (e.currentTarget.src = "https://placehold.co/600x600?text=No+Image")}
+                            onError={(e) => {
+                                e.currentTarget.src = "https://placehold.co/600x600?text=No+Image";
+                            }}
                         />
                     </Link>
 

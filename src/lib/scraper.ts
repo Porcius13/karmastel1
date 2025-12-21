@@ -195,7 +195,11 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     if (!raw) return "";
                     let u = (Array.isArray(raw) ? raw[0] : (raw.url || raw));
                     if (typeof u !== 'string') return "";
+
+                    // Force HTTPS
                     if (u.startsWith('//')) u = 'https:' + u;
+                    if (u.startsWith('http://')) u = u.replace('http://', 'https://');
+
                     if (u.includes("trendyol.com") && u.includes("/mnresize/")) u = u.replace(/\/mnresize\/\d+\/\d+\//, "/");
                     return u;
                 };
