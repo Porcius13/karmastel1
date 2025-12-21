@@ -336,7 +336,7 @@ export default function Home() {
       ) : (
         <div className={`
             ${viewMode === 'grid'
-            ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6'
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
             : 'flex flex-col gap-4'
           }
         `}>

@@ -207,6 +207,8 @@ export default function ProductDetailPage() {
                                 className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock && 'grayscale opacity-75'}`}
                                 sizes="(max-width: 768px) 100vw, 50vw"
                                 priority
+                                unoptimized
+                                referrerPolicy="no-referrer"
                             />
                             {!product.inStock && (
                                 <div className="absolute top-4 left-4 bg-danger text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider shadow-lg">
