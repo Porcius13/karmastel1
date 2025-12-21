@@ -53,7 +53,13 @@ if (getApps().length === 0) {
             console.error("Firebase Admin: Initialization error:", initError);
         }
     } else {
-        console.warn("Firebase Admin: FIREBASE_SERVICE_ACCOUNT_KEY is missing or invalid in environment.");
+        // More descriptive logging for what is missing
+        const missing = [];
+        if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) missing.push("FIREBASE_SERVICE_ACCOUNT_KEY");
+        if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push("FIREBASE_CLIENT_EMAIL");
+        if (!process.env.FIREBASE_PRIVATE_KEY) missing.push("FIREBASE_PRIVATE_KEY");
+
+        console.warn(`Firebase Admin: Initialization failed. Missing variables: ${missing.join(", ")}`);
     }
 } else {
     console.log("Firebase Admin: Already initialized");
