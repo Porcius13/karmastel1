@@ -168,7 +168,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                         </button>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative hidden md:block">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search size={18} className="text-muted-foreground group-focus-within:text-primary transition-colors" />
                         </div>
@@ -182,7 +182,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
 
                     {/* Add Product Field */}
-                    <div className="flex-1 max-w-2xl mx-auto hidden md:block group relative">
+                    <div className="flex-1 max-w-2xl mx-auto group relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <span className="material-symbols-outlined text-muted-foreground group-focus-within:text-primary transition-colors text-[18px]">add_link</span>
                         </div>
