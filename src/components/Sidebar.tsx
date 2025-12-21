@@ -1,22 +1,21 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     List,
     Heart,
-    ShoppingBag,
-    Archive,
     Plus,
     Folder,
     Hash,
-    Settings,
     PanelLeftClose,
     LogOut,
-    Infinity as InfinityIcon,
-    Compass
+    Compass,
+    MessageSquare
 } from 'lucide-react';
+import { chatService } from '@/lib/chat-service';
+import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
     className?: string;
@@ -36,14 +35,24 @@ export default function Sidebar({
     onAddCollection
 }: SidebarProps) {
     const pathname = usePathname();
+    const { user } = useAuth();
+    const [unreadCount, setUnreadCount] = React.useState(0);
+
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = chatService.subscribeToChats(user.uid, (chats) => {
+            const total = chats.reduce((acc, chat) => acc + (chat.unreadCount?.[user.uid] || 0), 0);
+            setUnreadCount(total);
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     const menuItems = [
         { name: 'Discover', icon: Compass, href: '/discover' },
         { name: 'All Items', icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
         { name: 'Collections', icon: Folder, href: '/collections' },
         { name: 'Favorites', icon: Heart, href: '/favorites' },
-        { name: 'Purchased', icon: ShoppingBag, href: '/purchased' },
-        { name: 'Archived', icon: Archive, href: '/archived' },
+        { name: 'Messages', icon: MessageSquare, href: '/messages', badge: unreadCount },
     ];
 
     return (
@@ -105,7 +114,7 @@ export default function Sidebar({
                                 }}
                                 title={isCollapsed ? item.name : undefined}
                                 className={`
-                                    flex items-center gap-3 rounded-lg transition-all duration-200 group cursor-pointer
+                                    flex items-center gap-3 rounded-lg transition-all duration-200 group cursor-pointer relative
                                     ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
                                     ${isActive
                                         ? 'bg-primary text-primary-foreground font-medium shadow-lg shadow-primary/20'
@@ -113,9 +122,19 @@ export default function Sidebar({
                                 `}
                             >
                                 <item.icon size={20} className={`shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground transition-colors'}`} />
+                                {isCollapsed && item.badge !== undefined && item.badge > 0 && (
+                                    <div className="absolute top-2 right-2 w-4 h-4 bg-primary text-black text-[8px] font-black rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                                        {item.badge}
+                                    </div>
+                                )}
                                 {!isCollapsed && (
                                     <>
-                                        <span className="whitespace-nowrap">{item.name}</span>
+                                        <span className="flex-1 whitespace-nowrap">{item.name}</span>
+                                        {item.badge !== undefined && item.badge > 0 && (
+                                            <span className="bg-white text-primary text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                                {item.badge}
+                                            </span>
+                                        )}
                                     </>
                                 )}
                             </Link>

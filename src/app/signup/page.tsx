@@ -24,6 +24,7 @@ export default function SignupPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [kvkkAccepted, setKvkkAccepted] = useState(false);
 
     const { signup, loginWithGoogle } = useAuth();
     const router = useRouter();
@@ -35,6 +36,12 @@ export default function SignupPage() {
 
         if (password !== confirmPassword) {
             setError("Passwords do not match");
+            setIsLoading(false);
+            return;
+        }
+
+        if (!kvkkAccepted) {
+            setError("Lütfen KVKK metnini onaylayın.");
             setIsLoading(false);
             return;
         }
@@ -171,6 +178,35 @@ export default function SignupPage() {
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
                         />
+                    </div>
+
+                    {/* KVKK Checkbox */}
+                    <div className="flex items-center gap-3 px-2">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={kvkkAccepted}
+                                    onChange={(e) => setKvkkAccepted(e.target.checked)}
+                                    className="peer sr-only"
+                                />
+                                <div className="w-5 h-5 border-2 border-muted-foreground/30 rounded-md bg-surface peer-checked:bg-primary peer-checked:border-primary transition-all group-hover:border-primary/50"></div>
+                                <svg
+                                    className="absolute left-1 top-1 w-3 h-3 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <span className="text-xs text-muted-foreground select-none">
+                                <Link href="/kvkk" className="text-primary hover:underline font-bold">KVKK Metni</Link>'ni okudum ve onaylıyorum.
+                            </span>
+                        </label>
                     </div>
 
                     <button

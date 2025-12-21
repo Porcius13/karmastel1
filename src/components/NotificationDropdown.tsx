@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, Heart, Tag, User, X, Check } from 'lucide-react';
+import { Bell, Heart, Tag, User, X, Check, MessageSquare } from 'lucide-react';
 import { Notification, NotificationService } from "@/lib/notification-service";
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -53,6 +53,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
         switch (type) {
             case 'FOLLOW': return <User size={16} className="text-white" />;
             case 'PRICE_DROP': return <Tag size={16} className="text-white" />;
+            case 'MESSAGE': return <MessageSquare size={16} className="text-white" />;
             default: return <Bell size={16} className="text-white" />;
         }
     };
@@ -61,6 +62,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
         switch (type) {
             case 'FOLLOW': return 'bg-blue-500';
             case 'PRICE_DROP': return 'bg-green-500';
+            case 'MESSAGE': return 'bg-primary';
             default: return 'bg-gray-500';
         }
     };

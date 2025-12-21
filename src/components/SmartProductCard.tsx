@@ -129,6 +129,34 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
         }
     };
 
+    const handleRemoveFromCollection = async () => {
+        if (!confirm(`Bu ürünü "${product.collection}" koleksiyonundan çıkarmak istediğinize emin misiniz?`)) return;
+
+        try {
+            const { deleteDoc, doc, updateDoc } = await import("firebase/firestore");
+
+            if (product.originalSourceId) {
+                // If it's a clone/copy in a specific collection, delete the document entirely
+                await deleteDoc(doc(db, "products", product.id));
+            } else {
+                // If it's the original product, just unset the collection field
+                const docRef = doc(db, "products", product.id);
+                await updateDoc(docRef, {
+                    collection: null,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+
+            // Sync local state optimistically
+            setProduct(prev => ({ ...prev, collection: undefined }));
+            alert("Ürün koleksiyondan çıkarıldı.");
+
+        } catch (e) {
+            console.error("Error removing from collection", e);
+            alert("İşlem başarısız oldu.");
+        }
+    };
+
 
     // Format Price
     const numericPrice = typeof product.price === 'string'
@@ -196,7 +224,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 </button>
 
                 {/* Collection Button */}
-                <div className={`${isList ? '' : 'absolute bottom-4 left-4'} group/collection`}>
+                <div className={`${isList ? '' : 'absolute bottom-4 left-4'} group/collection flex gap-2`}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -213,6 +241,21 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     >
                         <FolderPlus size={18} />
                     </button>
+
+                    {/* Quick Remove from Collection Button (Only if in a collection) */}
+                    {product.collection && product.collection !== 'Uncategorized' && (
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRemoveFromCollection();
+                            }}
+                            className={btnClass(`bg-white text-orange-500 hover:bg-orange-50`)}
+                            title="Koleksiyondan Çıkar"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">folder_off</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Delete Button */}

@@ -5,13 +5,14 @@ import { useParams } from "next/navigation";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UserService, UserProfile } from "@/lib/user-service";
 import { DiscoverService, PublicCollection } from "@/lib/discover-service";
-import { User, MapPin, Calendar, Link as LinkIcon, Lock, UserPlus, UserCheck, X } from "lucide-react";
+import { MessageSquare, User, MapPin, Calendar, Link as LinkIcon, Lock, UserPlus, UserCheck, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getFirestore, collection, query, where, getDocs, getCountFromServer, doc, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { chatService } from "@/lib/chat-service";
 
 // Simple User List Modal Component
 const UserListModal = ({ title, users, onClose }: { title: string, users: UserProfile[], onClose: () => void }) => {
@@ -317,6 +318,16 @@ export default function UserProfilePage() {
                             <button className="bg-surfaceHighlight text-foreground font-bold px-6 py-2.5 rounded-xl hover:bg-surfaceHighlight/80 transition-colors border border-border">
                                 Share Profile
                             </button>
+
+                            {currentUser && currentUser.uid !== userId && (
+                                <button
+                                    onClick={() => router.push(`/messages/${chatService.getChatId(currentUser.uid, userId)}`)}
+                                    className="bg-primary text-black font-bold px-8 py-2.5 rounded-xl hover:bg-primary/90 transition-all border border-primary active:scale-95 flex items-center gap-2 shadow-lg shadow-primary/20"
+                                >
+                                    <MessageSquare size={20} />
+                                    <span>Mesaj Gönder</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

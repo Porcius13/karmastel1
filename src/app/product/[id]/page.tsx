@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import { useAuth } from '@/context/AuthContext';
 import { DashboardShell } from '@/components/DashboardShell';
 import { PriceChart } from '@/components/PriceChart';
 import {
@@ -20,7 +21,9 @@ import {
     CheckCircle2,
     AlertCircle,
     Heart,
-    FolderPlus
+    FolderPlus,
+    FolderMinus,
+    Plus
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
@@ -30,6 +33,8 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [note, setNote] = useState('');
     const [savingNote, setSavingNote] = useState(false);
+    const [collections, setCollections] = useState<string[]>([]);
+    const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
 
     // Fetch Product Data
     useEffect(() => {
@@ -42,13 +47,25 @@ export default function ProductDetailPage() {
                 setProduct({ id: docSnap.id, ...data });
                 setNote(data.note || '');
             } else {
-                // Handle 404
                 console.log("No such document!");
             }
             setLoading(false);
         };
         fetchProduct();
     }, [id]);
+
+    const { user } = useAuth();
+
+    // Fetch Collections
+    useEffect(() => {
+        if (!user) return;
+        const q = query(collection(db, "collection_settings"), where("userId", "==", user.uid));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const cols = snapshot.docs.map(doc => doc.data().name);
+            setCollections(cols);
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     const handleSaveNote = async () => {
         setSavingNote(true);
@@ -79,23 +96,70 @@ export default function ProductDetailPage() {
         }
     };
 
-    const handleAddToCollection = async () => {
+    const handleAddToCollection = async (newCollection: string) => {
+        if (!product || !newCollection || newCollection === product.collection) return;
+        setCollectionDropdownPos(null);
+
+        try {
+            const { addDoc, collection: fireCollection, serverTimestamp } = await import("firebase/firestore");
+            const newProductData = {
+                ...product,
+                collection: newCollection,
+                originalSourceId: product.id,
+                createdAt: new Date().toISOString(),
+                updatedAt: serverTimestamp()
+            };
+            const { id: _, ...dataToSave } = newProductData;
+            await addDoc(fireCollection(db, "products"), dataToSave);
+            alert(`Product added to ${newCollection}!`);
+        } catch (e) {
+            console.error("Error adding to collection", e);
+            alert("Failed to add to collection.");
+        }
+    };
+
+    const handleRemoveFromCollection = async () => {
+        if (!product || !product.collection || product.collection === 'Uncategorized') return;
+        if (!confirm(`Bu ürünü "${product.collection}" koleksiyonundan çıkarmak istediğinize emin misiniz?`)) return;
+
+        try {
+            const { deleteDoc, doc: fireDoc, updateDoc: fireUpdate } = await import("firebase/firestore");
+
+            if (product.originalSourceId) {
+                await deleteDoc(fireDoc(db, "products", product.id));
+                router.push('/dashboard');
+            } else {
+                const docRef = fireDoc(db, "products", product.id);
+                await fireUpdate(docRef, {
+                    collection: null,
+                    updatedAt: new Date().toISOString()
+                });
+                setProduct({ ...product, collection: null });
+            }
+            alert("Ürün koleksiyondan çıkarıldı.");
+        } catch (e) {
+            console.error("Error removing from collection", e);
+            alert("İşlem başarısız oldu.");
+        }
+    };
+
+    const handleShare = async () => {
         if (!product) return;
 
-        const currentCollection = product.collection || '';
-        const newCollection = prompt("Enter collection name:", currentCollection);
-
-        if (newCollection !== null && newCollection !== currentCollection) {
-            // Optimistic update
-            setProduct({ ...product, collection: newCollection });
-
-            try {
-                const docRef = doc(db, "products", product.id);
-                await updateDoc(docRef, { collection: newCollection });
-            } catch (e) {
-                console.error("Error updating collection", e);
-                setProduct({ ...product, collection: currentCollection });
+        try {
+            if (typeof navigator !== 'undefined' && navigator.share) {
+                await navigator.share({
+                    title: product.title,
+                    text: `Bu ürüne bir bak: ${product.title}`,
+                    url: window.location.href,
+                });
+            } else {
+                // Fallback to clipboard
+                await navigator.clipboard.writeText(window.location.href);
+                alert("Ürün linki kopyalandı!");
             }
+        } catch (e) {
+            console.warn("Share failed or cancelled", e);
         }
     };
 
@@ -171,15 +235,32 @@ export default function ProductDetailPage() {
                                 <span>Favorite</span>
                             </button>
 
-                            <button
-                                onClick={handleAddToCollection}
-                                className="flex items-center justify-center gap-2 bg-surface text-[var(--text-main)] border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
-                            >
-                                <FolderPlus size={20} />
-                                <span>Collection</span>
-                            </button>
+                            <div className="relative group/collection">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setCollectionDropdownPos(collectionDropdownPos ? null : { x: rect.left, y: rect.bottom + 8 });
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 bg-surface text-[var(--text-main)] border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
+                                >
+                                    <FolderPlus size={20} />
+                                    <span>Collection</span>
+                                </button>
+                            </div>
+
+                            {product.collection && product.collection !== 'Uncategorized' && (
+                                <button
+                                    onClick={handleRemoveFromCollection}
+                                    className="flex items-center justify-center gap-2 bg-surface text-orange-500 border border-surfaceHighlight hover:bg-orange-500/10 p-4 rounded-xl font-medium transition-all"
+                                >
+                                    <FolderMinus size={20} />
+                                    <span>Remove</span>
+                                </button>
+                            )}
 
                             <button
+                                onClick={handleShare}
                                 className="flex items-center justify-center gap-2 bg-surface text-[var(--text-main)] border border-surfaceHighlight hover:bg-surfaceHighlight p-4 rounded-xl font-medium transition-all"
                             >
                                 <Share2 size={20} />
@@ -269,6 +350,39 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
             </main>
+            {/* Collection Dropdown */}
+            {collectionDropdownPos && (
+                <>
+                    <div className="fixed inset-0 z-[60] bg-transparent" onClick={() => setCollectionDropdownPos(null)} />
+                    <div
+                        className="fixed w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[70] animate-in fade-in zoom-in-95 duration-200"
+                        style={{ top: collectionDropdownPos.y, left: collectionDropdownPos.x }}
+                    >
+                        <div className="p-2 max-h-48 overflow-y-auto">
+                            <div className="text-xs font-semibold text-slate-400 px-2 py-1 mb-1 uppercase tracking-wider">Koleksiyonlar</div>
+                            {collections.length > 0 ? (
+                                collections.map((col) => (
+                                    <button
+                                        key={col}
+                                        onClick={() => handleAddToCollection(col)}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${product.collection === col ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                                    >
+                                        {product.collection === col && <CheckCircle2 size={14} />}
+                                        <span className="truncate">{col}</span>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="text-xs text-slate-400 px-3 py-2 italic text-center">Koleksiyon yok</div>
+                            )}
+                        </div>
+                        <div className="p-2 border-t border-slate-50 bg-slate-50">
+                            <button onClick={() => router.push('/collections/create')} className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 py-1 flex items-center justify-center gap-1">
+                                <Plus size={12} /> Yeni Oluştur
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </DashboardShell>
     );
 }

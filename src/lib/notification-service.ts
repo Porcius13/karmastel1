@@ -17,7 +17,7 @@ import {
 export interface Notification {
     id: string;
     userId: string; // The recipient
-    type: 'FOLLOW' | 'PRICE_DROP' | 'STOCK_ALERT' | 'SYSTEM' | 'COLLECTION_LIKE' | 'COLLECTION_SAVE';
+    type: 'FOLLOW' | 'PRICE_DROP' | 'STOCK_ALERT' | 'SYSTEM' | 'COLLECTION_LIKE' | 'COLLECTION_SAVE' | 'MESSAGE';
     title: string;
     message: string;
     link?: string; // Where to go on click
@@ -92,6 +92,24 @@ export const NotificationService = {
             await batch.commit();
         } catch (error) {
             console.error("Error marking all notifications as read", error);
+        }
+    },
+    // Mark all notifications for a specific link as read
+    async markNotificationsAsReadByLink(userId: string, link: string) {
+        try {
+            const notifRef = collection(db, "users", userId, "notifications");
+            const q = query(notifRef, where("link", "==", link), where("isRead", "==", false));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) return;
+
+            const batch = writeBatch(db);
+            snapshot.docs.forEach((doc) => {
+                batch.update(doc.ref, { isRead: true });
+            });
+            await batch.commit();
+        } catch (error) {
+            console.error("Error marking link notifications as read", error);
         }
     }
 };
