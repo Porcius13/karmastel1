@@ -98,12 +98,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
             <div className="absolute top-3 right-3 z-20 flex gap-2">
                 {isPublic && (
                     <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(`${window.location.origin}/share/${name}`); // Placeholder, logic will be improved
-                            alert("Link copied to clipboard!");
-                        }}
+                        onClick={handleShare}
                         className="p-2 bg-surfaceHighlight hover:bg-primary hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
                         title="Copy Share Link"
                     >

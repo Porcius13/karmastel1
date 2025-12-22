@@ -47,10 +47,12 @@ export default function SharedCollectionPage() {
 
                 let decodedName = '';
                 try {
-                    decodedName = decodeURIComponent(escape(atob(encodedName)));
+                    // Reverse the URL-safe Base64 replacements (- -> +, _ -> /)
+                    const base64 = encodedName.replace(/-/g, '+').replace(/_/g, '/');
+                    decodedName = decodeURIComponent(escape(atob(base64)));
                 } catch (e) {
                     // Fallback if not base64 or failed
-                    decodedName = encodedName;
+                    decodedName = decodeURIComponent(encodedName);
                 }
 
                 setCollectionName(decodedName);
