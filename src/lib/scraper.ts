@@ -165,7 +165,27 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             browser = await getBrowser();
             const page = await browser.newPage();
 
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            // --- STEALTH LOGIC ---
+            const isAmazon = cleanUrlStr.includes("amazon.com.tr");
+            const isDecathlon = cleanUrlStr.includes("decathlon.com.tr");
+            const isNike = cleanUrlStr.includes("nike.com");
+            const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+
+            await page.setUserAgent(userAgent);
+
+            if (isAmazon || isDecathlon || isNike) {
+                // Adaptive headers for Amazon, Decathlon & Nike to bypass bot blocks (Cloudflare, etc)
+                await page.setExtraHTTPHeaders({
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"',
+                    'Upgrade-Insecure-Requests': '1'
+                });
+                // Small random delay for "human" feel
+                await new Promise(r => setTimeout(r, Math.floor(Math.random() * 500) + 200));
+            }
 
             // Pipe browser logs to Node console for debugging scraper errors
             page.on('console', msg => {
@@ -176,8 +196,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             await page.setRequestInterception(true);
             page.on('request', (req) => {
-                // Allow 'other' as some SPA stream payloads are marked as such
-                if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+                const type = req.resourceType();
+                // Amazon & Decathlon & Nike anti-bot (Cloudflare, Akamai etc) trigger if CSS/Static assets are blocked
+                const blockList = (isAmazon || isDecathlon || isNike)
+                    ? ['image', 'font', 'media'] // Allow CSS for anti-bot challenges
+                    : ['image', 'stylesheet', 'font', 'media'];
+
+                if (blockList.includes(type)) {
                     req.abort();
                 } else {
                     req.continue();
@@ -462,6 +487,32 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                                 if (result.price && result.image) return result;
                             } catch (e) {
                                 console.warn("Amazon specific extraction failed", e);
+                            }
+                        }
+
+                        // NIKE SPECIFIC EXTRACTION (Next.js Data Hunter)
+                        if (window.location.hostname.includes("nike.com")) {
+                            try {
+                                const nextData = (window as any)["__NEXT_DATA__"];
+                                if (nextData && nextData.props && nextData.props.pageProps) {
+                                    const pp = nextData.props.pageProps;
+                                    // 1. Try to get data from selectedProduct
+                                    const p = pp.selectedProduct || (pp.productGroups && pp.productGroups[0]?.products?.[Object.keys(pp.productGroups[0]?.products || {})[0]]);
+                                    if (p) {
+                                        result.title = p.title || result.title;
+                                        if (p.prices) {
+                                            result.price = p.prices.currentPrice?.toString() || p.prices.listPrice?.toString() || result.price;
+                                            result.currency = p.prices.currency || result.currency;
+                                        }
+                                        if (p.images && p.images.portraitURL) {
+                                            result.image = cleanUrl(p.images.portraitURL);
+                                        }
+                                        result.source = 'json-ld'; // NEXT_DATA is SSR state
+                                        if (result.price) return result;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Nike NEXT_DATA extraction failed", e);
                             }
                         }
 
