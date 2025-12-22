@@ -130,10 +130,32 @@ async function getBrowser() {
 // --- SCRAPER FUNCTION ---
 
 export async function scrapeProduct(url: string): Promise<ScrapedData> {
-    if (!url) throw new Error("URL is required");
+    let cleanUrlStr = url.trim();
+    if (!cleanUrlStr) throw new Error("URL is required");
+
+    // Add protocol if missing
+    if (!/^https?:\/\//i.test(cleanUrlStr)) {
+        cleanUrlStr = "https://" + cleanUrlStr;
+    }
 
     return Sentry.withScope(async (scope) => {
-        const domainName = new URL(url).hostname.replace('www.', '');
+        let domainName = "unknown";
+        try {
+            domainName = new URL(cleanUrlStr).hostname.replace('www.', '');
+        } catch (e) {
+            console.warn("Invalid URL format:", cleanUrlStr);
+            return {
+                title: "",
+                image: "",
+                description: "",
+                price: 0,
+                currency: "TRY",
+                inStock: true,
+                source: 'manual',
+                error: "Invalid URL format"
+            };
+        }
+
         scope.setTag("site", domainName);
         scope.setTag("scraper_mode", "hybrid_regex");
 
@@ -144,16 +166,18 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             const page = await browser.newPage();
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-            await page.setExtraHTTPHeaders({
-                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
+
+            // Pipe browser logs to Node console for debugging scraper errors
+            page.on('console', msg => {
+                if (msg.type() === 'error' || msg.type() === 'warn') {
+                    console.log(`PAGE ${msg.type().toUpperCase()}:`, msg.text());
+                }
             });
 
             await page.setRequestInterception(true);
             page.on('request', (req) => {
-                if (['image', 'stylesheet', 'font', 'media', 'other'].includes(req.resourceType())) {
+                // Allow 'other' as some SPA stream payloads are marked as such
+                if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
                     req.abort();
                 } else {
                     req.continue();
@@ -162,8 +186,8 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             // 1. NAVIGATION (Robust 25s Timeout)
             try {
-                console.log("Navigating to:", url);
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+                console.log("Navigating to:", cleanUrlStr);
+                await page.goto(cleanUrlStr, { waitUntil: 'domcontentloaded', timeout: 25000 });
             } catch (error) {
                 console.warn("Navigation Timeout (25s) - Proceeding to extraction...");
             }
@@ -171,11 +195,31 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             // Wait for JSON-LD settling
             await new Promise(r => setTimeout(r, 1000));
 
-            // Hepsiburada Specific Lazy Load Trigger
-            if (url.includes('hepsiburada')) {
+            // Hybrid Specific Lazy Load / SPA Trigger
+            if (url.includes('hepsiburada') || url.includes('decathlon') || url.includes('trendyol') || url.includes('amazon')) {
                 try {
+                    // Amazon Splash Bypass (Soft Bot Detection)
+                    if (url.includes('amazon')) {
+                        const splashBtn = await page.$('a[href*="/ref=nav_logo"], button:contains("Alışverişe Devam Et"), input[data-action-type="SELECT_LOCATION"]');
+                        // Use a more generic check for the "Continue Shopping" button seen in logs
+                        const isSplash = await page.evaluate(() => {
+                            const btn = document.querySelector('button, a, input[type="submit"]');
+                            return btn && (btn.textContent?.includes('Alışverişe Devam Et') || (btn as any).value?.includes('Alışverişe Devam Et'));
+                        });
+
+                        if (isSplash) {
+                            console.log("Amazon Splash Detected. Clicking to continue...");
+                            await page.evaluate(() => {
+                                const btns = Array.from(document.querySelectorAll('button, a, input[type="submit"]'));
+                                const target = btns.find(b => b.textContent?.includes('Alışverişe Devam Et') || (b as any).value?.includes('Alışverişe Devam Et'));
+                                if (target) (target as any).click();
+                            });
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
+                    }
+
                     await page.evaluate(() => window.scrollBy(0, 1000));
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 2000)); // Standard 2s wait for SPA elements
                 } catch (e) { }
             }
 
@@ -193,14 +237,25 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
                 const cleanUrl = (raw: any): string => {
                     if (!raw) return "";
-                    let u = (Array.isArray(raw) ? raw[0] : (raw.url || raw));
+                    // Handle JSON-LD ImageObject or array
+                    let u = raw;
+                    if (Array.isArray(raw)) {
+                        u = raw[0];
+                    } else if (typeof raw === 'object') {
+                        u = raw.contentUrl || raw.url || (Array.isArray(raw.image) ? raw.image[0] : raw.image) || raw;
+                        if (Array.isArray(u)) u = u[0];
+                    }
+
                     if (typeof u !== 'string') return "";
 
                     // Force HTTPS
                     if (u.startsWith('//')) u = 'https:' + u;
                     if (u.startsWith('http://')) u = u.replace('http://', 'https://');
 
-                    if (u.includes("trendyol.com") && u.includes("/mnresize/")) u = u.replace(/\/mnresize\/\d+\/\d+\//, "/");
+                    // Clean Trendyol / Generic mnresize patterns
+                    if ((u.includes("trendyol") || u.includes("dsmcdn") || u.includes("hepsiburada")) && u.includes("/mnresize/")) {
+                        u = u.replace(/\/mnresize\/\d+\/\d+\//, "/");
+                    }
                     return u;
                 };
 
@@ -225,7 +280,8 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                                         if (offer.availability && !offer.availability.includes('InStock')) result.inStock = false;
                                         result.source = 'json-ld';
                                     }
-                                    if (result.price) return result;
+                                    // Only return if we have BOTH price and image
+                                    if (result.price && result.image) return result;
                                 }
                             }
                         } catch (e) { }
@@ -235,23 +291,113 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 // Strategy B: Meta Tags
                 if (!result.price) {
                     try {
-                        const priceMeta = document.querySelector('meta[property="product:price:amount"]') || document.querySelector('meta[property="og:price:amount"]');
+                        const priceMeta = document.querySelector('meta[property="product:price:amount"]') ||
+                            document.querySelector('meta[property="og:price:amount"]') ||
+                            document.querySelector('meta[name="twitter:data1"]'); // Some sites use data1 for price
                         if (priceMeta) {
-                            result.price = safePrice(priceMeta.getAttribute('content'));
+                            result.price = safePrice(priceMeta.getAttribute('content') || priceMeta.getAttribute('value'));
                             result.source = 'meta-tag';
                         }
-                        const imgMeta = document.querySelector('meta[property="og:image"]');
-                        if (imgMeta) result.image = cleanUrl(imgMeta.getAttribute('content'));
+                        const imgMeta = document.querySelector('meta[property="og:image"]') ||
+                            document.querySelector('meta[name="twitter:image"]') ||
+                            document.querySelector('link[rel="image_src"]');
+                        if (imgMeta) result.image = cleanUrl(imgMeta.getAttribute('content') || imgMeta.getAttribute('href'));
 
-                        const titleMeta = document.querySelector('meta[property="og:title"]');
-                        if (titleMeta) result.title = titleMeta.getAttribute('content');
+                        const titleMeta = document.querySelector('meta[property="og:title"]') ||
+                            document.querySelector('meta[name="twitter:title"]') ||
+                            document.querySelector('title');
+                        if (titleMeta) result.title = titleMeta.getAttribute('content') || titleMeta.textContent;
                     } catch (e) { }
                 }
 
                 // Strategy C: CSS Fallback
                 if (!result.price) {
                     try {
-                        // Hepsiburada CDN (Image Hunter)
+                        // TRENDYOL ENVOY PROPS EXTRACTION (PuzzleJs Hybrid)
+                        if (window.location.hostname.includes("trendyol")) {
+                            const envoyProps = (window as any)["__envoy_product-detail__PROPS"];
+                            if (envoyProps && envoyProps.product) {
+                                const p = envoyProps.product;
+                                result.title = p.name || result.title;
+                                if (p.winnerVariant && p.winnerVariant.price && p.winnerVariant.price.discountedPrice) {
+                                    result.price = p.winnerVariant.price.discountedPrice.value?.toString() || "";
+                                }
+                                if (p.images && p.images.length > 0) {
+                                    // Trendyol images in Props are already original/zoom quality
+                                    result.image = cleanUrl(p.images[0]);
+                                } else {
+                                    // Fallback to image-gallery props
+                                    const galleryProps = (window as any)["__envoy_product-image-gallery__PROPS"];
+                                    if (galleryProps && galleryProps.images && galleryProps.images.length > 0) {
+                                        result.image = cleanUrl(galleryProps.images[0]);
+                                    }
+                                }
+                                result.source = 'json-ld'; // Reusing label for SSR state
+                                if (result.price) return result;
+                            }
+                        }
+
+                        // HEPSIBURADA REDUX EXTRACTION (SUPER ROBUST)
+                        if (window.location.hostname.includes("hepsiburada")) {
+                            const reduxScript = document.getElementById('reduxStore');
+                            if (reduxScript) {
+                                try {
+                                    const state = JSON.parse(reduxScript.innerHTML);
+                                    const p = state?.productState?.product;
+                                    if (p) {
+                                        result.title = p.name || result.title;
+                                        if (p.prices && p.prices.length > 0) {
+                                            result.price = p.prices[0].value?.toString() || "";
+                                            result.currency = p.prices[0].currency || "TRY";
+                                        }
+                                        if (p.media && p.media.length > 0) {
+                                            let imgUrl = p.media[0].url || "";
+                                            // Handle {size} placeholder
+                                            result.image = cleanUrl(imgUrl.replace('{size}', '1500'));
+                                        }
+                                        // Stock status
+                                        if (p.availabilityStatus) {
+                                            result.inStock = p.availabilityStatus === 'InStock';
+                                        }
+                                        result.source = 'json-ld'; // Reuse label or use DOM if we had one
+                                        if (result.price) return result;
+                                    }
+                                } catch (e) {
+                                    console.warn("Redux parse failed", e);
+                                }
+                            }
+                        }
+
+                        // DECATHLON VARIANT EXTRACTION (Variant-Aware)
+                        if (window.location.hostname.includes("decathlon")) {
+                            try {
+                                const dkt = (window as any)["__DKT"];
+                                if (dkt && dkt._ctx && dkt._ctx.data) {
+                                    // 1. Get Model Code (mc) from URL
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    const mc = urlParams.get('mc');
+
+                                    // 2. Find Supermodel context
+                                    const supermodel = dkt._ctx.data.find((d: any) => d.type === 'Supermodel');
+                                    if (supermodel && supermodel.data && supermodel.data.models) {
+                                        const model = mc
+                                            ? supermodel.data.models.find((m: any) => m.modelId === mc)
+                                            : supermodel.data.models[0]; // Fallback to first
+
+                                        if (model) {
+                                            result.price = model.price?.toString() || result.price;
+                                            if (model.image) result.image = cleanUrl(model.image.url || model.image);
+                                            result.source = 'json-ld'; // SSR State
+                                            if (result.price) return result;
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("Decathlon DKT extraction failed", e);
+                            }
+                        }
+
+                        // Hepsiburada CDN (Image Hunter - Fallback if Redux fails)
                         if (!result.image && window.location.hostname.includes("hepsiburada")) {
                             // 1. Try OG first (already done, but double check specific Hepsiburada behavior if needed - generic covers it)
 
@@ -280,7 +426,58 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                             }
                         }
 
-                        const priceSelectors = ['.product-price-container .prc-dsc', '.price', '.product-price', '#price_inside_buybox', '.amount'];
+                        // AMAZON SPECIFIC EXTRACTION (Cunning & Robust)
+                        if (window.location.hostname.includes("amazon")) {
+                            try {
+                                // 1. Title
+                                result.title = document.querySelector('#productTitle')?.textContent?.trim() || result.title;
+
+                                // 2. Price (Target hidden inputs first for clean numeric data)
+                                const priceInput = document.querySelector('input[name*="customerVisiblePrice"]') ||
+                                    document.querySelector('input[id*="attach-base-product-price"]');
+                                if (priceInput) {
+                                    result.price = (priceInput as any).value || result.price;
+                                } else {
+                                    // Fallback to offscreen or price symbols
+                                    const offscreen = document.querySelector('.a-price .a-offscreen');
+                                    if (offscreen) {
+                                        result.price = offscreen.textContent?.trim() || result.price;
+                                    } else {
+                                        const whole = document.querySelector('.a-price-whole')?.textContent?.trim();
+                                        const fraction = document.querySelector('.a-price-fraction')?.textContent?.trim();
+                                        if (whole) result.price = `${whole}${fraction || ""}`;
+                                    }
+                                }
+
+                                // 3. Image
+                                const landingImg = document.querySelector('#landingImage') as HTMLImageElement;
+                                if (landingImg && landingImg.src) {
+                                    result.image = cleanUrl(landingImg.src);
+                                } else {
+                                    const dynamicImg = document.querySelector('#imgTagWrapperId img') as HTMLImageElement;
+                                    if (dynamicImg && dynamicImg.src) result.image = cleanUrl(dynamicImg.src);
+                                }
+
+                                result.source = 'dom-selectors';
+                                if (result.price && result.image) return result;
+                            } catch (e) {
+                                console.warn("Amazon specific extraction failed", e);
+                            }
+                        }
+
+                        const priceSelectors = [
+                            '.product-price-container .prc-dsc',
+                            '.price',
+                            '.product-price',
+                            '#price_inside_buybox',
+                            '.amount',
+                            '[itemprop="price"]',
+                            '.price-format__main-price',
+                            '.vtmn-price',
+                            '[data-testid="price"]',
+                            '.current-price',
+                            '.product__price'
+                        ];
                         for (const sel of priceSelectors) {
                             const el = document.querySelector(sel);
                             if (el && /\d/.test(el.textContent || "")) {
@@ -357,6 +554,35 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     const nameMatch = html.match(/"name"\s*:\s*"([^"]+)"/);
                     if (nameMatch) finalData.title = nameMatch[1];
                 }
+
+                // 4. TRENDYOL REGEX STATE RECOVERY (If Script execution failed)
+                if (url.includes('trendyol') && (finalData.price === 0 || !domData.image)) {
+                    try {
+                        console.log("Trendyol DOM incomplete. Scanning raw HTML for Envoy Props...");
+                        const envoyMatch = html.match(/window\["__envoy_product-detail__PROPS"\]\s*=\s*(\{.*?\});/);
+                        if (envoyMatch && envoyMatch[1]) {
+                            const state = JSON.parse(envoyMatch[1]);
+                            const p = state?.product;
+                            if (p) {
+                                if (!finalData.title) finalData.title = p.name;
+                                if (finalData.price === 0 && p.winnerVariant?.price?.discountedPrice) {
+                                    finalData.price = smartPriceParse(p.winnerVariant.price.discountedPrice.value);
+                                    finalData.source = 'regex-scan';
+                                }
+                                if (!domData.image && p.images && p.images.length > 0) {
+                                    // Implementation of price parser-like cleanUrl in Node
+                                    let img = p.images[0];
+                                    if (img.startsWith('//')) img = 'https:' + img;
+                                    img = img.replace(/\/mnresize\/\d+\/\d+\//, "/");
+                                    finalData.image = img;
+                                    finalData.source = 'regex-scan';
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Trendyol Regex State Recovery failed:", e);
+                    }
+                }
             }
 
             // Fallback Placeholder
@@ -370,6 +596,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             }
 
             // Debug
+            console.log("Scraping Completed Successfully:", {
+                title: finalData.title,
+                price: finalData.price,
+                image: finalData.image.substring(0, 50) + "...",
+                source: finalData.source
+            });
+
             if (process.env.NODE_ENV !== 'production') {
                 await page.screenshot({ path: path.resolve(process.cwd(), 'debug_last_run.png') });
             }

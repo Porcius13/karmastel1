@@ -5,4 +5,17 @@ Sentry.init({
 
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
+
+    // Filter out transient, unfixable browser errors to reduce noise
+    ignoreErrors: [
+        "Connection to Indexed Database server lost",
+        "QuotaExceededError",
+        "NS_ERROR_FAILURE",
+        "The operation is insecure",
+        "Loading chunk", // Network errors during JS chunk loading
+        "Load failed",
+        "AbortError",
+        "Fetch is aborted",
+        "NotFoundError: The object can not be found here."
+    ],
 });

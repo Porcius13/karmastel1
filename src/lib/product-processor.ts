@@ -80,7 +80,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             });
             docId = docRef.id;
         } else {
-            console.warn("Processing: Admin SDK not available, falling back to Client SDK (Will likely fail in prod)");
+            console.warn(`Processing: Admin SDK not available (missing env vars?), falling back to Client SDK. Target: ${targetCollection}`);
             // Fallback to client SDK (Might fail in prod if no auth)
             const docRef = await addDoc(collection(db, targetCollection), {
                 ...productData,
@@ -89,7 +89,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             docId = docRef.id;
         }
 
-        console.log(`Processing: Saved to ${targetCollection} with ID ${docId}`);
+        console.log(`Processing: Successfully saved to ${targetCollection} with ID ${docId}`);
 
         // 4. Auto-Set Collection Cover Image if missing
         if (targetCollection === "products" && productData.image && productData.collection && productData.collection !== 'Uncategorized') {
