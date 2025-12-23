@@ -152,15 +152,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const data = await response.json();
 
-            if (!data.success) throw new Error(data.error || "Failed to save product.");
+            if (!response.ok || !data.success) {
+                const serverError = data.error || `Server returned ${response.status}`;
+                throw new Error(serverError);
+            }
 
             // Success UI
             mainView.classList.add('hidden');
             resultCard.classList.remove('hidden');
 
         } catch (error) {
-            console.error(error);
-            showStatus(error.message, "error");
+            console.error("FAVDUCK Extension Error:", error);
+            showStatus(`Error: ${error.message}`, "error");
         } finally {
             setLoading(false);
         }
