@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
+    const { t } = useLanguage();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -57,7 +59,7 @@ export default function Navbar() {
                             </div>
                             <input
                                 className="block w-full pl-12 pr-14 py-3 bg-surface border-none rounded-full text-sm font-medium placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:bg-surface transition-all shadow-sm outline-none"
-                                placeholder="Paste a product link to save..."
+                                placeholder={t('common.paste_link')}
                                 type="text"
                             />
                             <div className="absolute inset-y-0 right-1.5 flex items-center">
@@ -71,7 +73,7 @@ export default function Navbar() {
                     {/* Right Actions */}
                     <div className="flex items-center gap-3 shrink-0">
                         <button className="hidden lg:flex h-10 px-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-sm hover:brightness-95 transition-all">
-                            Upgrade Pro
+                            {t('common.upgradePro')}
                         </button>
                         <button className="flex size-10 items-center justify-center rounded-full bg-surface hover:bg-muted/10 transition-colors text-foreground">
                             <span className="material-symbols-outlined text-[22px]">notifications</span>
@@ -107,14 +109,14 @@ export default function Navbar() {
                                             onClick={() => setIsDropdownOpen(false)}
                                         >
                                             <Settings size={16} />
-                                            Settings
+                                            {t('common.settings')}
                                         </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
                                         >
                                             <LogOut size={16} />
-                                            Log Out
+                                            {t('common.logout')}
                                         </button>
                                     </div>
                                 </div>

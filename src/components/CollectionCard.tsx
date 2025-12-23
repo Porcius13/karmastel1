@@ -49,7 +49,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
         <div className="relative group aspect-square">
             <Link
                 href={`/collections/${encodeURIComponent(name)}`}
-                className="block w-full h-full bg-surface border border-surfaceHighlight p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 flex flex-col items-center justify-center text-center relative overflow-hidden group"
+                className="block w-full h-full bg-surface border border-surface-highlight p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 flex flex-col items-center justify-center text-center relative overflow-hidden group"
             >
                 {/* Background Image */}
                 {image && (
@@ -69,7 +69,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                             <Folder size={32} />
                         </div>
                     )}
-                    <h3 className="font-bold text-[var(--text-main)] text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center drop-shadow-md">
+                    <h3 className="font-bold text-foreground text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center drop-shadow-md">
                         {name}
                     </h3>
                     <p className="text-sm text-muted-foreground font-medium drop-shadow-md">{count} items</p>
@@ -87,7 +87,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                             e.stopPropagation();
                             onTogglePrivacy(e, name);
                         }}
-                        className={`p-2 rounded-full transition-colors ${isPublic ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-surfaceHighlight text-muted-foreground hover:bg-surfaceHighlight/80'}`}
+                        className={`p-2 rounded-full transition-colors ${isPublic ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-surface-highlight text-muted-foreground hover:bg-surface-highlight/80'}`}
                         title={isPublic ? "Public (Click to make Private)" : "Private (Click to make Public)"}
                     >
                         {isPublic ? <Globe size={16} /> : <Lock size={16} />}
@@ -99,7 +99,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                 {isPublic && (
                     <button
                         onClick={handleShare}
-                        className="p-2 bg-surfaceHighlight hover:bg-primary hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
+                        className="p-2 bg-surface-highlight hover:bg-primary hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
                         title="Copy Share Link"
                     >
                         <Share2 size={16} />
@@ -113,7 +113,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                             e.stopPropagation();
                             onDelete(e, name);
                         }}
-                        className="p-2 bg-surfaceHighlight hover:bg-danger hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
+                        className="p-2 bg-surface-highlight hover:bg-danger hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
                         title="Delete Collection"
                     >
                         <Trash2 size={16} />

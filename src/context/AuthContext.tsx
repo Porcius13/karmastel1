@@ -21,6 +21,7 @@ interface AuthContextType {
     signup: (email: string, password: string, userData: { firstName: string; lastName: string; username: string }) => Promise<void>;
     sendVerification: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
+    deleteUserAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -153,8 +154,31 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const deleteUserAccount = async () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) throw new Error("No user logged in");
+
+        try {
+            // 1. Delete Firestore Data
+            const { getFirestore, doc, deleteDoc } = await import("firebase/firestore");
+            const db = getFirestore();
+            await deleteDoc(doc(db, "users", currentUser.uid));
+
+            // Optional: Delete products/collections if needed, but keeping it simple for now
+            // as firestore rules might restrict or we might want a background trigger.
+
+            // 2. Delete Auth User
+            const { deleteUser } = await import("firebase/auth");
+            await deleteUser(currentUser);
+
+        } catch (error) {
+            console.error("Delete Account Error", error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, login, signup, sendVerification, resetPassword }}>
+        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, login, signup, sendVerification, resetPassword, deleteUserAccount }}>
             {children}
         </AuthContext.Provider>
     );

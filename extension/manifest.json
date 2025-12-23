@@ -1,14 +1,44 @@
 {
     "manifest_version": 3,
-    "name": "Antigravity Saver",
-    "version": "1.0",
-    "description": "Save products to Wishlist Tracker with one click.",
+    "name": "FAVDUCK Saver",
+    "version": "1.1",
+    "description": "Save products to your universal wishlist with one click.",
     "permissions": [
-        "activeTab"
+        "activeTab",
+        "storage",
+        "cookies"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "http://*/*",
+                "https://*/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "content.css"
+            ],
+            "run_at": "document_idle"
+        }
     ],
     "host_permissions": [
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "https://miayis-tracker.vercel.app/*",
+        "https://favduck.com/*",
+        "https://*/*"
     ],
+    "externally_connectable": {
+        "matches": [
+            "http://localhost:3000/*",
+            "https://miayis-tracker.vercel.app/*",
+            "https://favduck.com/*"
+        ]
+    },
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
@@ -21,5 +51,15 @@
         "16": "icon.png",
         "48": "icon.png",
         "128": "icon.png"
-    }
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "icon.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
 }

@@ -1,0 +1,145 @@
+.favduck-side-wrapper {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: row;
+    /* Save on left, Logo on right */
+    align-items: center;
+    z-index: 2147483647;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(-5px 5px 15px rgba(0, 0, 0, 0.1));
+}
+
+.favduck-logo-btn {
+    width: 48px;
+    height: 48px;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 12px 0 0 12px;
+    /* Rounded only on inside left */
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: #ccff00;
+    /* Neon yellow/green */
+    transition: all 0.3s ease;
+    order: 2;
+    /* Force to right side */
+}
+
+.favduck-logo-btn:hover {
+    background: #111;
+}
+
+.favduck-logo-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+.favduck-save-btn {
+    width: 0;
+    /* Hidden by default */
+    height: 48px;
+    background: #fdfdf5;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: #000;
+    order: 1;
+    /* Place on left side */
+    border-radius: 12px 0 0 12px;
+}
+
+.favduck-side-wrapper:hover .favduck-save-btn {
+    width: 48px;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* When expanded, the logo should only be rounded on the right? 
+   Actually, let's keep it simple: the whole group is rounded on the far left. */
+.favduck-side-wrapper:hover .favduck-logo-btn {
+    border-radius: 0 0 0 0;
+    /* Flat when expanded */
+    /* Wait, if it's right: 0, the right side is the screen edge. */
+}
+
+.favduck-save-btn svg {
+    width: 22px;
+    height: 22px;
+    opacity: 0;
+    transition: opacity 0.2s ease, fill 0.3s ease;
+}
+
+.favduck-side-wrapper:hover .favduck-save-btn svg {
+    opacity: 1;
+}
+
+/* Saved State */
+.favduck-save-btn.saved svg {
+    fill: #10b981;
+    color: #10b981;
+}
+
+.favduck-spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: favduck-spin 1s linear infinite;
+}
+
+.favduck-save-btn.loading svg {
+    display: none;
+}
+
+.favduck-save-btn.loading .favduck-spinner {
+    display: block;
+}
+
+@keyframes favduck-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.favduck-toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: #1e293b;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    z-index: 2147483647;
+    transform: translateY(100px);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.favduck-toast.show {
+    transform: translateY(0);
+}
+
+.favduck-toast.success {
+    border-left: 4px solid #10b981;
+}
+
+.favduck-toast.error {
+    border-left: 4px solid #ef4444;
+}

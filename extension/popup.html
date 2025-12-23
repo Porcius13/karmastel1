@@ -1,35 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity Saver</title>
-    <!-- Tailwind CDN for instant styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { width: 320px; height: auto; }
-    </style>
+    <title>FAVDUCK Saver</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans p-4">
-    
-    <div class="text-center mb-4">
-        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            Wishlist Tracker
-        </h1>
-        <p class="text-xs text-gray-500">Save this page to your list</p>
+
+<body class="p-6">
+
+    <!-- Top Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-black flex items-center justify-center shadow-md overflow-hidden p-1.5">
+                <img src="icon.png" alt="FAVDUCK Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="font-extrabold text-slate-800 tracking-tight text-base">FAVDUCK</span>
+        </div>
+        <div class="flex gap-2">
+            <button id="settingsBtn" class="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                </svg>
+            </button>
+            <button id="closeBtn" class="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <!-- Main Content -->
-    <div id="main" class="space-y-3">
-        <button id="saveBtn" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-blue-500 active:scale-95 flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save Current Page
+    <!-- Main View -->
+    <div id="mainView" class="space-y-6">
+
+        <!-- Auth Warning -->
+        <div id="authWarning"
+            class="hidden p-3 rounded-xl bg-orange-50 border border-orange-100 text-orange-800 text-[11px] font-medium animate-pulse">
+            Please sign in to FAVDUCK at <a href="http://localhost:3000" target="_blank"
+                class="underline font-bold">localhost:3000</a>
+        </div>
+
+        <!-- Product Image & Basic Info -->
+        <div class="product-image-container karma-shadow">
+            <img id="productImg" src="icon.png" alt="Product">
+        </div>
+
+        <div class="space-y-1 text-center">
+            <h2 id="productPrice" class="text-2xl font-black text-slate-900 leading-none">--.-- TRY</h2>
+            <h3 id="productTitle" class="text-sm font-medium text-slate-500 line-clamp-1 px-4">Detecting product...</h3>
+        </div>
+
+        <!-- Options Section -->
+        <div class="space-y-5 pt-2">
+            <!-- Notify Thresholds -->
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Notify me when price
+                    drops to:</p>
+                <div class="flex gap-2">
+                    <button class="notify-btn active" data-val="any">Any Drop</button>
+                    <button class="notify-btn" data-val="25">25% OFF</button>
+                    <button class="notify-btn" data-val="50">50% OFF</button>
+                </div>
+            </div>
+
+            <!-- List Picker -->
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Save to collection:
+                </p>
+                <div class="relative">
+                    <select id="collectionSelect"
+                        class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 appearance-none cursor-pointer karma-shadow">
+                        <option value="">My Wishlist</option>
+                    </select>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="saveBtn"
+            class="w-full py-4 premium-bg text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4">
+            <div id="spinner" class="spinner hidden"></div>
+            <span id="btnText">SAVE ITEM</span>
         </button>
     </div>
 
-    <!-- Status Area -->
-    <div id="status" class="mt-4 hidden text-center p-3 rounded-lg text-sm font-medium"></div>
+    <!-- Success Result Card (Replaces the form) -->
+    <div id="resultCard" class="hidden py-8 space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div class="flex justify-center">
+            <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-green-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                </svg>
+            </div>
+        </div>
+        <div class="space-y-2">
+            <h2 class="text-xl font-black text-slate-900">Success!</h2>
+            <p class="text-sm text-slate-500 font-medium">Product saved to your FAVDUCK list. We'll track it for you.
+            </p>
+        </div>
+        <button id="viewListBtn"
+            class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">
+            VIEW DASHBOARD
+        </button>
+    </div>
+
+    <!-- Settings View (Manual User ID Entry) -->
+    <div id="settingsView" class="hidden space-y-4">
+        <div class="flex items-center gap-3 mb-4">
+            <button id="backBtn" class="p-1.5 hover:bg-slate-200 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-slate-400">
+                    <path d="m15 18-6-6 6-6" />
+                </svg>
+            </button>
+            <h2 class="text-lg font-bold">Settings</h2>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 karma-shadow">
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase">Your User ID</label>
+            <input id="userIdInput" type="text" placeholder="Paste ID from profile..."
+                class="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+            <p class="text-[10px] text-slate-400 mt-2 px-1 italic">Find this in your Profile Settings on FAVDUCK web
+                app.</p>
+        </div>
+
+        <button id="saveSettingsBtn" class="w-full py-3 premium-bg text-white font-bold rounded-xl shadow-lg">
+            SAVE CHANGES
+        </button>
+    </div>
+
+    <!-- Toast Status -->
+    <div id="status"
+        class="fixed bottom-4 left-6 right-6 p-3 rounded-xl text-[11px] font-black text-center hidden shadow-2xl transition-all">
+    </div>
 
     <script src="popup.js"></script>
 </body>
+
 </html>

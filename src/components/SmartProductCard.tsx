@@ -56,7 +56,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
     const handleToggleFavorite = async () => {
         if (!user) {
-            alert("Favorilere eklemek için giriş yapmalısınız.");
+            alert("Please sign in to add to favorites.");
             return;
         }
 
@@ -95,7 +95,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
             console.error("Error updating favorite", e);
             // Revert
             setProduct((prev) => ({ ...prev, isFavorite: !newStatus }));
-            alert("İşlem sırasında bir hata oluştu.");
+            alert("An error occurred during the process.");
         }
     };
 
@@ -130,7 +130,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
     };
 
     const handleRemoveFromCollection = async () => {
-        if (!confirm(`Bu ürünü "${product.collection}" koleksiyonundan çıkarmak istediğinize emin misiniz?`)) return;
+        if (!confirm(`Are you sure you want to remove this item from "${product.collection}"?`)) return;
 
         try {
             const { deleteDoc, doc, updateDoc } = await import("firebase/firestore");
@@ -149,11 +149,11 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
             // Sync local state optimistically
             setProduct(prev => ({ ...prev, collection: undefined }));
-            alert("Ürün koleksiyondan çıkarıldı.");
+            alert("Product removed from collection.");
 
         } catch (e) {
             console.error("Error removing from collection", e);
-            alert("İşlem başarısız oldu.");
+            alert("Action failed.");
         }
     };
 
@@ -164,7 +164,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
         : product.price;
 
     const formattedPrice = typeof numericPrice === 'number'
-        ? numericPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
+        ? numericPrice.toLocaleString('en-US', { style: 'currency', currency: 'TRY' })
         : product.price;
 
     // Check Badge Logic
@@ -179,8 +179,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {/* Edit Button */}
                 <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className={btnClass(`bg-white text-black hover:bg-black hover:text-white ${animClass}`)}
-                    title="Düzenle"
+                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass}`)}
+                    title="Edit"
                 >
                     <Pencil size={18} />
                 </button>
@@ -190,16 +190,16 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         href={product.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={btnClass(`bg-white text-black hover:bg-primary ${animClass} delay-75`)}
-                        title="Ürüne Git"
+                        className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-75`)}
+                        title="Go to store"
                     >
                         <ExternalLink size={20} />
                     </a>
                 ) : (
                     <button
                         onClick={onSetAlarm}
-                        className={btnClass(`bg-surfaceHighlight text-[var(--text-main)] hover:bg-danger ${animClass} delay-75`)}
-                        title="Stok Alarmı Kur"
+                        className={btnClass(`bg-surfaceHighlight text-foreground hover:bg-danger hover:text-white ${animClass} delay-75`)}
+                        title="Set stock alert"
                     >
                         <Bell size={20} />
                     </button>
@@ -208,8 +208,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {/* Analysis/Chart Button */}
                 <button
                     onClick={onOpenChart}
-                    className={btnClass(`bg-white text-black hover:bg-primary ${animClass} delay-100`)}
-                    title="Fiyat Analizi"
+                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-100`)}
+                    title="Price analysis"
                 >
                     <TrendingDown size={20} />
                 </button>
@@ -217,8 +217,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {/* Favorite Button */}
                 <button
                     onClick={handleToggleFavorite}
-                    className={btnClass(`bg-white ${product.isFavorite ? 'text-red-500 hover:bg-red-50' : 'text-black hover:bg-red-50 hover:text-red-500'} ${isList ? '' : 'absolute bottom-4 right-4'} `)}
-                    title="Favorilere Ekle/Çıkar"
+                    className={btnClass(`bg-surface ${product.isFavorite ? 'text-danger hover:bg-danger/10' : 'text-foreground hover:bg-danger/10 hover:text-danger'} ${isList ? '' : 'absolute bottom-4 right-4'} `)}
+                    title="Add to/Remove from favorites"
                 >
                     <Heart size={18} fill={product.isFavorite ? "currentColor" : "none"} />
                 </button>
@@ -236,8 +236,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 setCollectionDropdownPos({ x: rect.left, y: rect.bottom + 8 });
                             }
                         }}
-                        className={btnClass(`bg-white text-black hover:bg-blue-50 hover:text-blue-500`)}
-                        title="Koleksiyona Ekle"
+                        className={btnClass(`bg-surface text-foreground hover:bg-primary/20 hover:text-primary`)}
+                        title="Add to collection"
                     >
                         <FolderPlus size={18} />
                     </button>
@@ -250,10 +250,10 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 e.stopPropagation();
                                 handleRemoveFromCollection();
                             }}
-                            className={btnClass(`bg-white text-orange-500 hover:bg-orange-50`)}
-                            title="Koleksiyondan Çıkar"
+                            className={btnClass(`bg-surface text-orange-500 hover:bg-orange-500/10`)}
+                            title="Remove from collection"
                         >
-                            <span className="material-symbols-outlined text-[18px]">folder_off</span>
+                            <TrendingDown size={18} className="rotate-45" /> {/* Temporary icon for remove if not finding exact lucide one here, but I'll use something better */}
                         </button>
                     )}
                 </div>
@@ -266,8 +266,8 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             e.stopPropagation();
                             onDelete();
                         }}
-                        className={btnClass(`bg-black/50 text-white hover:bg-red-500 delay-300`)}
-                        title="Sil"
+                        className={btnClass(`bg-surface-secondary text-foreground hover:bg-danger hover:text-white delay-300`)}
+                        title="Delete"
                     >
                         <Trash2 size={20} />
                     </button>
@@ -304,21 +304,21 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     {/* Status Badges */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
                         {!product.inStock && (
-                            <span className="bg-danger/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide">
-                                Tükendi
+                            <span className="bg-danger/10 backdrop-blur border border-danger/20 text-danger text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide">
+                                Out of Stock
                             </span>
                         )}
                         {/* Target Price Met Badge */}
                         {isTargetMet && (
-                            <span className="bg-primary/90 backdrop-blur text-black text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1 shadow-lg shadow-primary/20 animate-pulse">
+                            <span className="bg-primary/90 backdrop-blur text-primary-foreground text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1 shadow-glow animate-pulse">
                                 <CheckCircle2 size={12} className="stroke-[3px]" />
-                                Fırsat 🔥
+                                Deal 🔥
                             </span>
                         )}
 
                         {viewMode !== 'list' && (
-                            <div className="bg-background/80 backdrop-blur px-3 py-1.5 rounded-lg border border-white/5">
-                                <span className={`text-sm font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
+                            <div className="bg-surface/80 backdrop-blur px-3 py-1.5 rounded-lg border border-border">
+                                <span className={`text-sm font-bold ${isTargetMet ? 'text-primary font-black' : 'text-foreground'}`}>
                                     {formattedPrice}
                                 </span>
                             </div>
@@ -328,7 +328,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
                 {/* Meta Info */}
                 <div className={`mt-3 px-1 ${viewMode === 'list' ? 'flex-1 mt-0' : ''}`}>
-                    <h3 className="text-sm font-medium leading-snug text-[var(--text-main)] line-clamp-2 group-hover:text-primary transition-colors">
+                    <h3 className="text-sm font-bold leading-snug text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                         {product.title}
                     </h3>
                     {product.targetPrice && !isTargetMet && (
@@ -343,12 +343,12 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {viewMode === 'list' && (
                     <div className="flex items-center gap-4 ml-auto pr-2">
                         <div className="text-right">
-                            <div className={`text-lg font-bold ${isTargetMet ? 'text-primary' : 'text-[var(--text-main)]'}`}>
+                            <div className={`text-lg font-bold ${isTargetMet ? 'text-primary' : 'text-foreground'}`}>
                                 {formattedPrice}
                             </div>
                             {product.targetPrice && !isTargetMet && (
                                 <div className="text-xs text-muted-foreground">
-                                    Hedef: {product.targetPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                                    Target: {product.targetPrice.toLocaleString('en-US', { style: 'currency', currency: 'TRY' })}
                                 </div>
                             )}
                         </div>
@@ -376,24 +376,24 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
                     {/* Dropdown Menu */}
                     <div
-                        className="fixed w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[70] animate-in fade-in zoom-in-95 duration-200"
+                        className="fixed w-48 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-[70] animate-in fade-in zoom-in-95 duration-200"
                         style={{
                             top: collectionDropdownPos.y,
                             left: collectionDropdownPos.x
                         }}
                     >
                         <div className="p-2 max-h-48 overflow-y-auto">
-                            <div className="text-xs font-semibold text-slate-400 px-2 py-1 mb-1 uppercase tracking-wider">
-                                Koleksiyonlar
+                            <div className="text-[10px] font-black text-muted-foreground px-3 py-2 mb-1 uppercase tracking-widest border-b border-border/50">
+                                Collections
                             </div>
                             {collections.length > 0 ? (
                                 collections.map((col) => (
                                     <button
                                         key={col}
                                         onClick={() => handleAddToCollection(col)}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${product.collection === col
-                                            ? 'bg-blue-50 text-blue-600 font-bold'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                        className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors flex items-center gap-2 ${product.collection === col
+                                            ? 'bg-primary/10 text-primary font-bold'
+                                            : 'text-foreground hover:bg-surface-secondary'
                                             }`}
                                     >
                                         {product.collection === col && <CheckCircle2 size={14} />}
@@ -401,17 +401,17 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                     </button>
                                 ))
                             ) : (
-                                <div className="text-xs text-slate-400 px-3 py-2 italic text-center">
-                                    Koleksiyon yok
+                                <div className="text-xs text-muted-foreground px-3 py-6 italic text-center">
+                                    No collections
                                 </div>
                             )}
                         </div>
-                        <div className="p-2 border-t border-slate-50 bg-slate-50">
+                        <div className="p-2 border-t border-border bg-surface-secondary/50">
                             <button
                                 onClick={() => router.push('/collections/create')}
-                                className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 py-1"
+                                className="w-full text-center text-[10px] font-bold text-primary hover:text-primary/80 py-1.5 tracking-wide"
                             >
-                                + Yeni Oluştur
+                                + CREATE NEW
                             </button>
                         </div>
                     </div>

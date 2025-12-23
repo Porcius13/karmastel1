@@ -29,6 +29,7 @@
     --text-muted: #64748B;
     --muted: #E2E8F0;
     --muted-foreground: #64748B;
+    --surface-highlight: #F4E9F2;
     --shadow-glow: 0 0 40px -10px rgba(109, 70, 107, 0.4);
   }
 
@@ -47,6 +48,7 @@
     --text-muted: #A1A1AA;
     --muted: #27272A;
     --muted-foreground: #A1A1AA;
+    --surface-highlight: #2D2D30;
     --shadow-glow: 0 0 40px -10px rgba(180, 159, 204, 0.3);
   }
 
@@ -65,5 +67,13 @@
 
   ::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
+  }
+
+  .glass {
+    @apply bg-surface/70 backdrop-blur-xl border border-white/10;
+  }
+
+  .dark .glass {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5;
   }
 }

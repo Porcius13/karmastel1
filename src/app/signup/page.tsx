@@ -13,6 +13,7 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function SignupPage() {
     const [firstName, setFirstName] = useState('');
@@ -25,8 +26,10 @@ export default function SignupPage() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [kvkkAccepted, setKvkkAccepted] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     const { signup, loginWithGoogle } = useAuth();
+    const { t } = useLanguage();
     const router = useRouter();
 
     const handleSignup = async (e: React.FormEvent) => {
@@ -40,8 +43,8 @@ export default function SignupPage() {
             return;
         }
 
-        if (!kvkkAccepted) {
-            setError("Lütfen KVKK metnini onaylayın.");
+        if (!kvkkAccepted || !termsAccepted) {
+            setError(t('signup.error_terms'));
             setIsLoading(false);
             return;
         }
@@ -81,8 +84,8 @@ export default function SignupPage() {
 
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black mb-2 tracking-tight text-foreground">Create Account</h1>
-                    <p className="text-muted-foreground">Join standard of curation.</p>
+                    <h1 className="text-4xl font-black mb-2 tracking-tight text-foreground">{t('signup.title')}</h1>
+                    <p className="text-muted-foreground">{t('signup.subtitle')}</p>
                 </div>
 
                 {/* Error Alert */}
@@ -99,7 +102,7 @@ export default function SignupPage() {
                             <input
                                 type="text"
                                 required
-                                placeholder="First Name"
+                                placeholder={t('signup.firstName')}
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
                                 className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -109,7 +112,7 @@ export default function SignupPage() {
                             <input
                                 type="text"
                                 required
-                                placeholder="Last Name"
+                                placeholder={t('signup.lastName')}
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
                                 className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -122,7 +125,7 @@ export default function SignupPage() {
                         <input
                             type="text"
                             required
-                            placeholder="Username"
+                            placeholder={t('signup.username')}
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -136,7 +139,7 @@ export default function SignupPage() {
                         <input
                             type="email"
                             required
-                            placeholder="Email address"
+                            placeholder={t('signup.email')}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -151,7 +154,7 @@ export default function SignupPage() {
                         <input
                             type={showPassword ? "text" : "password"}
                             required
-                            placeholder="Password"
+                            placeholder={t('signup.password')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
@@ -173,17 +176,40 @@ export default function SignupPage() {
                         <input
                             type={showPassword ? "text" : "password"}
                             required
-                            placeholder="Confirm Password"
+                            placeholder={t('signup.confirmPassword')}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             className="w-full bg-surface border border-transparent focus:border-primary/50 rounded-2xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
                         />
                     </div>
 
-                    {/* KVKK Checkbox */}
-                    <div className="flex items-center gap-3 px-2">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative">
+                    {/* Compliance Checkboxes */}
+                    <div className="space-y-3 px-2">
+                        {/* Terms of Use */}
+                        <label className="flex items-start gap-3 cursor-pointer group">
+                            <div className="relative mt-0.5">
+                                <input
+                                    type="checkbox"
+                                    checked={termsAccepted}
+                                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                                    className="peer sr-only"
+                                />
+                                <div className="w-5 h-5 border-2 border-muted-foreground/30 rounded-md bg-surface peer-checked:bg-primary peer-checked:border-primary transition-all group-hover:border-primary/50"></div>
+                                <svg className="absolute left-1 top-1 w-3 h-3 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="text-[11px] leading-tight text-muted-foreground select-none">
+                                {t('signup.terms_agreement').replace('{terms}', '###TERMS###').split('###TERMS###').map((part: string, i: number) => (
+                                    <React.Fragment key={i}>
+                                        {part}
+                                        {i === 0 && <Link href="/terms" className="text-primary hover:underline font-bold">{t('signup.terms_label')}</Link>}
+                                    </React.Fragment>
+                                ))}
+                            </span>
+                        </label>
+
+                        {/* KVKK Policy */}
+                        <label className="flex items-start gap-3 cursor-pointer group">
+                            <div className="relative mt-0.5">
                                 <input
                                     type="checkbox"
                                     checked={kvkkAccepted}
@@ -191,20 +217,15 @@ export default function SignupPage() {
                                     className="peer sr-only"
                                 />
                                 <div className="w-5 h-5 border-2 border-muted-foreground/30 rounded-md bg-surface peer-checked:bg-primary peer-checked:border-primary transition-all group-hover:border-primary/50"></div>
-                                <svg
-                                    className="absolute left-1 top-1 w-3 h-3 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
+                                <svg className="absolute left-1 top-1 w-3 h-3 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </div>
-                            <span className="text-xs text-muted-foreground select-none">
-                                <Link href="/kvkk" className="text-primary hover:underline font-bold">KVKK Metni</Link>'ni okudum ve onaylıyorum.
+                            <span className="text-[11px] leading-tight text-muted-foreground select-none">
+                                {t('signup.kvkk_agreement').replace('{kvkk}', '###KVKK###').split('###KVKK###').map((part: string, i: number) => (
+                                    <React.Fragment key={i}>
+                                        {part}
+                                        {i === 0 && <Link href="/kvkk" className="text-primary hover:underline font-bold">{t('signup.kvkk_label')}</Link>}
+                                    </React.Fragment>
+                                ))}
                             </span>
                         </label>
                     </div>
@@ -214,7 +235,7 @@ export default function SignupPage() {
                         disabled={isLoading}
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-4 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-glow"
                     >
-                        {isLoading ? <Loader2 className="animate-spin" /> : <>Sign Up <ArrowRight size={20} /></>}
+                        {isLoading ? <Loader2 className="animate-spin" /> : <>{t('signup.button')} <ArrowRight size={20} /></>}
                     </button>
                 </form>
 
@@ -235,7 +256,7 @@ export default function SignupPage() {
                 </button>
 
                 <div className="mt-8 text-center text-sm text-muted-foreground">
-                    Already have an account? <Link href="/login" className="text-primary hover:underline font-bold">Log In</Link>
+                    {t('signup.already_have_account')} <Link href="/login" className="text-primary hover:underline font-bold">{t('signup.login')}</Link>
                 </div>
 
             </div>

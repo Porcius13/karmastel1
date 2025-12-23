@@ -56,8 +56,8 @@ export default function MessagesInboxPage() {
         <DashboardShell>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-black text-[var(--text-main)] mb-2">Mesajlar</h1>
-                    <p className="text-muted-foreground">Diğer kullanıcılarla yaptığın konuşmalar.</p>
+                    <h1 className="text-3xl font-black text-foreground mb-2">Messages</h1>
+                    <p className="text-muted-foreground">Your conversations with other users.</p>
                 </div>
 
                 {loading ? (
@@ -66,12 +66,12 @@ export default function MessagesInboxPage() {
                     </div>
                 ) : chats.length === 0 ? (
                     <div className="bg-surface/50 border border-dashed border-surfaceHighlight rounded-3xl p-20 text-center flex flex-col items-center">
-                        <div className="w-16 h-16 bg-surfaceHighlight rounded-full flex items-center justify-center mb-4 text-muted-foreground">
+                        <div className="w-16 h-16 bg-surface-highlight rounded-full flex items-center justify-center mb-4 text-muted-foreground">
                             <MessageSquare size={32} />
                         </div>
-                        <h3 className="text-xl font-bold text-[var(--text-main)]">Henüz mesajın yok</h3>
+                        <h3 className="text-xl font-bold text-foreground">No messages yet</h3>
                         <p className="text-muted-foreground max-w-xs mx-auto mt-2">
-                            Arkadaşlarınla iletişime geçmek için profillerindeki "Mesaj Gönder" butonunu kullanabilirsin.
+                            You can use the "Send Message" button on their profiles to get in touch with friends.
                         </p>
                     </div>
                 ) : (
@@ -85,12 +85,12 @@ export default function MessagesInboxPage() {
                                 <button
                                     key={chat.id}
                                     onClick={() => router.push(`/messages/${chat.id}`)}
-                                    className="w-full bg-surface hover:bg-surfaceHighlight border border-surfaceHighlight/50 p-5 rounded-2xl flex items-center gap-4 transition-all group text-left"
+                                    className="w-full bg-surface hover:bg-surface-secondary border border-surface-highlight p-5 rounded-2xl flex items-center gap-4 transition-all group text-left"
                                 >
                                     <div className="relative">
                                         <div className="w-14 h-14 rounded-full bg-background overflow-hidden border border-white/5">
                                             <img
-                                                src={otherUser.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUid}`}
+                                                src={otherUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUid}`}
                                                 alt="Avatar"
                                                 className="w-full h-full object-cover"
                                             />
@@ -104,14 +104,14 @@ export default function MessagesInboxPage() {
 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-[var(--text-main)] truncate">
-                                                {otherUser.displayName || 'Kullanıcı'}
+                                            <span className="font-bold text-foreground truncate">
+                                                @{otherUser.username || otherUser.displayName || 'User'}
                                             </span>
                                             <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
                                                 {formatTimestamp(chat.lastTimestamp)}
                                             </span>
                                         </div>
-                                        <p className={`text-sm truncate ${unread > 0 ? 'text-[var(--text-main)] font-semibold' : 'text-muted-foreground'}`}>
+                                        <p className={`text-sm truncate ${unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
                                             {chat.lastMessage}
                                         </p>
                                     </div>
@@ -123,6 +123,6 @@ export default function MessagesInboxPage() {
                     </div>
                 )}
             </div>
-        </DashboardShell>
+        </DashboardShell >
     );
 }

@@ -22,15 +22,15 @@ export default function ForgotPasswordPage() {
 
         try {
             await resetPassword(email);
-            setMessage('Şifre sıfırlama bağlantısı e-posta adresine gönderildi!');
+            setMessage('Password reset link has been sent to your email address!');
         } catch (err: any) {
             console.error(err);
             if (err.code === 'auth/user-not-found') {
-                setError('Bu e-posta adresiyle kayıtlı bir kullanıcı bulunamadı.');
+                setError('No user found with this email address.');
             } else if (err.code === 'auth/invalid-email') {
-                setError('Geçersiz e-posta adresi.');
+                setError('Invalid email address.');
             } else {
-                setError('Bir hata oluştu. Lütfen tekrar dene.');
+                setError('An error occurred. Please try again.');
             }
         } finally {
             setLoading(false);
@@ -47,12 +47,12 @@ export default function ForgotPasswordPage() {
 
                 {/* Header */}
                 <div className="space-y-2">
-                    <Link href="/login" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white transition-colors mb-4">
+                    <Link href="/login" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
                         <ArrowLeft size={16} />
-                        Giriş Yap'a Dön
+                        Back to Login
                     </Link>
-                    <h1 className="text-3xl font-black tracking-tight text-white">Şifreni Sıfırla</h1>
-                    <p className="text-muted-foreground">E-posta adresini gir, sana şifreni sıfırlaman için bir bağlantı gönderelim.</p>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground">Reset Your Password</h1>
+                    <p className="text-muted-foreground">Enter your email address and we'll send you a link to reset your password.</p>
                 </div>
 
                 {/* Status Messages */}
@@ -75,10 +75,10 @@ export default function ForgotPasswordPage() {
                         <input
                             type="email"
                             required
-                            placeholder="E-posta Adresi"
+                            placeholder="Email Address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-background border border-surfaceHighlight focus:border-primary/50 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                            className="w-full bg-background border border-surface-highlight focus:border-primary/50 rounded-2xl py-4 pl-12 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
                         />
                     </div>
 
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
                         disabled={loading}
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-4 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-glow"
                     >
-                        {loading ? <Loader2 className="animate-spin" /> : <>Bağlantı Gönder <Send size={20} /></>}
+                        {loading ? <Loader2 className="animate-spin" /> : <>Send Link <Send size={20} /></>}
                     </button>
                 </form>
             </div>

@@ -17,9 +17,9 @@ const config: Config = {
                 background: "var(--background)",
                 surface: {
                     DEFAULT: "var(--surface)",
-                    secondary: "var(--surface-secondary)"
+                    secondary: "var(--surface-secondary)",
+                    highlight: "var(--surface-highlight)"
                 },
-                // surfaceHighlight: "var(--surface-highlight)", // Removing unused
                 primary: {
                     DEFAULT: "var(--primary)",
                     foreground: "var(--primary-foreground)"

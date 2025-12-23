@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UserService, UserProfile } from "@/lib/user-service";
 import { DiscoverService, PublicCollection } from "@/lib/discover-service";
-import { MessageSquare, User, MapPin, Calendar, Link as LinkIcon, Lock, UserPlus, UserCheck, X } from "lucide-react";
+import { MessageSquare, User, MapPin, Calendar, Link as LinkIcon, Lock, UserPlus, UserCheck, X, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -13,9 +13,18 @@ import { useRouter } from "next/navigation";
 import { getFirestore, collection, query, where, getDocs, getCountFromServer, doc, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { chatService } from "@/lib/chat-service";
+import { SocialService } from "@/lib/social-service";
+import { Bookmark } from "lucide-react";
 
 // Simple User List Modal Component
-const UserListModal = ({ title, users, onClose }: { title: string, users: UserProfile[], onClose: () => void }) => {
+const UserListModal = ({ title, users, onClose, currentUserId, onAction, actionLoading }: {
+    title: string,
+    users: UserProfile[],
+    onClose: () => void,
+    currentUserId?: string,
+    onAction?: (targetId: string) => Promise<void>,
+    actionLoading?: string | null
+}) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
             <div className="bg-surface border border-surfaceHighlight rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -29,24 +38,38 @@ const UserListModal = ({ title, users, onClose }: { title: string, users: UserPr
                     {users.length > 0 ? (
                         <div className="flex flex-col gap-1">
                             {users.map(user => (
-                                <Link
-                                    href={`/user/${user.uid}`}
-                                    key={user.uid}
-                                    onClick={onClose}
-                                    className="flex items-center gap-3 p-3 hover:bg-surfaceHighlight rounded-xl transition-colors"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-surface-secondary overflow-hidden border border-border shrink-0">
-                                        {user.photoURL ? (
-                                            <Image src={user.photoURL} alt={user.username || "User"} width={40} height={40} className="w-full h-full object-cover" unoptimized />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground"><User size={20} /></div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-sm">{user.displayName}</span>
-                                        {user.username && <span className="text-xs text-muted-foreground">@{user.username}</span>}
-                                    </div>
-                                </Link>
+                                <div key={user.uid} className="flex items-center justify-between p-2 hover:bg-surfaceHighlight/50 rounded-xl transition-colors group">
+                                    <Link
+                                        href={`/user/${user.uid}`}
+                                        onClick={onClose}
+                                        className="flex items-center gap-3 flex-1"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-surface-secondary overflow-hidden border border-border shrink-0">
+                                            {user.photoURL ? (
+                                                <Image src={user.photoURL} alt={user.username || "User"} width={40} height={40} className="w-full h-full object-cover" unoptimized />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground"><User size={20} /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-sm">{user.displayName}</span>
+                                            {user.username && <span className="text-xs text-muted-foreground">@{user.username}</span>}
+                                        </div>
+                                    </Link>
+
+                                    {onAction && currentUserId && user.uid !== currentUserId && (
+                                        <button
+                                            onClick={() => onAction(user.uid)}
+                                            disabled={actionLoading === user.uid}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 border ${(user as any).isFollowing
+                                                ? "bg-surfaceHighlight text-foreground border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20"
+                                                : "bg-primary text-black border-primary"
+                                                }`}
+                                        >
+                                            {actionLoading === user.uid ? "..." : ((user as any).isFollowing ? "Takip Ediliyor" : "Takip Et")}
+                                        </button>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     ) : (
@@ -66,7 +89,10 @@ export default function UserProfilePage() {
 
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [collections, setCollections] = useState<PublicCollection[]>([]);
+    const [savedCollections, setSavedCollections] = useState<any[]>([]);
+    const [likedCollections, setLikedCollections] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'my' | 'saved' | 'liked'>('my');
 
     // Social State
     const [isFollowing, setIsFollowing] = useState(false);
@@ -77,6 +103,7 @@ export default function UserProfilePage() {
     // Modal State
     const [modalOpen, setModalOpen] = useState<'followers' | 'following' | null>(null);
     const [modalList, setModalList] = useState<UserProfile[]>([]);
+    const [modalActionLoading, setModalActionLoading] = useState<string | null>(null);
 
     useEffect(() => {
         if (!userId) return;
@@ -157,6 +184,57 @@ export default function UserProfilePage() {
                 console.error("Error fetching user collections", err);
             }
 
+            // 5. Fetch Saved Collections if it's currentUser's profile
+            if (currentUser && currentUser.uid === userId) {
+                try {
+                    const saved = await SocialService.getSavedCollections(userId);
+                    // Minimal hydration for preview
+                    const hydratedSaved = await Promise.all(saved.map(async (item: any) => {
+                        try {
+                            const productsRef = collection(db, "products");
+                            const q = query(
+                                productsRef,
+                                where("userId", "==", item.ownerId),
+                                where("collection", "==", item.collectionName),
+                                limit(1)
+                            );
+                            const snap = await getDocs(q);
+                            return {
+                                ...item,
+                                previewImage: snap.empty ? null : snap.docs[0].data().image
+                            };
+                        } catch (e) { return item; }
+                    }));
+                    setSavedCollections(hydratedSaved);
+                } catch (e) {
+                    console.error("Error fetching saved collections", e);
+                }
+
+                // Fetch Liked Collections
+                try {
+                    const liked = await SocialService.getLikedCollections(userId);
+                    const hydratedLiked = await Promise.all(liked.map(async (item: any) => {
+                        try {
+                            const productsRef = collection(db, "products");
+                            const q = query(
+                                productsRef,
+                                where("userId", "==", item.ownerId),
+                                where("collection", "==", item.collectionName),
+                                limit(1)
+                            );
+                            const snap = await getDocs(q);
+                            return {
+                                ...item,
+                                previewImage: snap.empty ? null : snap.docs[0].data().image
+                            };
+                        } catch (e) { return item; }
+                    }));
+                    setLikedCollections(hydratedLiked);
+                } catch (e) {
+                    console.error("Error fetching liked collections", e);
+                }
+            }
+
             setLoading(false);
         };
         loadData();
@@ -196,15 +274,68 @@ export default function UserProfilePage() {
         setModalList([]); // Clear previous
 
         try {
+            let list: UserProfile[] = [];
             if (type === 'followers') {
-                const list = await UserService.getFollowers(userId);
-                setModalList(list);
+                list = await UserService.getFollowers(userId);
             } else {
-                const list = await UserService.getFollowing(userId);
+                list = await UserService.getFollowing(userId);
+            }
+
+            // Hydrate with follow status for current user
+            if (currentUser) {
+                const hydratedList = await Promise.all(list.map(async (u) => {
+                    const following = await UserService.isFollowing(currentUser.uid, u.uid);
+                    return { ...u, isFollowing: following };
+                }));
+                setModalList(hydratedList as any);
+            } else {
                 setModalList(list);
             }
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleModalAction = async (targetId: string) => {
+        if (!currentUser) return;
+        if (modalActionLoading) return;
+
+        setModalActionLoading(targetId);
+        try {
+            const userInList = modalList.find(u => u.uid === targetId);
+            const isCurrentlyFollowing = (userInList as any)?.isFollowing;
+
+            if (isCurrentlyFollowing) {
+                // Unfollow
+                await UserService.unfollowUser(currentUser.uid, targetId);
+
+                // Update local list state
+                setModalList(prev => prev.map(u =>
+                    u.uid === targetId ? { ...u, isFollowing: false } : u
+                ));
+
+                // If looking at own following list, decrement count
+                if (modalOpen === 'following' && userId === currentUser.uid) {
+                    setFollowingCount(prev => prev - 1);
+                }
+            } else {
+                // Follow
+                await UserService.followUser(currentUser.uid, targetId);
+
+                // Update local list state
+                setModalList(prev => prev.map(u =>
+                    u.uid === targetId ? { ...u, isFollowing: true } : u
+                ));
+
+                // If looking at own following list, increment count
+                if (modalOpen === 'following' && userId === currentUser.uid) {
+                    setFollowingCount(prev => prev + 1);
+                }
+            }
+        } catch (e) {
+            console.error("Modal action failed", e);
+        } finally {
+            setModalActionLoading(null);
         }
     };
 
@@ -237,6 +368,9 @@ export default function UserProfilePage() {
                     title={modalOpen === 'followers' ? 'Followers' : 'Following'}
                     users={modalList}
                     onClose={() => setModalOpen(null)}
+                    currentUserId={currentUser?.uid}
+                    onAction={currentUser?.uid === userId ? handleModalAction : undefined}
+                    actionLoading={modalActionLoading}
                 />
             )}
 
@@ -332,46 +466,145 @@ export default function UserProfilePage() {
                     </div>
                 </div>
 
-                {/* Public Collections */}
+                {/* Collections Section */}
                 <div>
-                    <div className="flex items-center gap-2 mb-6">
-                        <LinkIcon className="text-primary" size={24} />
-                        <h2 className="text-2xl font-bold text-foreground">Public Collections</h2>
+                    <div className="flex items-center justify-between border-b border-surfaceHighlight mb-8">
+                        <div className="flex gap-8">
+                            <button
+                                onClick={() => setActiveTab('my')}
+                                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'my' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Public Collections
+                                {activeTab === 'my' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transition-all" />}
+                            </button>
+                            {currentUser && currentUser.uid === userId && (
+                                <button
+                                    onClick={() => setActiveTab('saved')}
+                                    className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'saved' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Saved Collections
+                                    {activeTab === 'saved' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transition-all" />}
+                                </button>
+                            )}
+                            {currentUser && currentUser.uid === userId && (
+                                <button
+                                    onClick={() => setActiveTab('liked')}
+                                    className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'liked' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Liked Collections
+                                    {activeTab === 'liked' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transition-all" />}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {collections.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {collections.map(col => (
-                                <Link href={`/collection/${col.id}`} key={col.id}>
-                                    <div className="group cursor-pointer flex flex-col gap-3">
-                                        <div className="relative overflow-hidden rounded-xl aspect-[4/3] bg-surface-secondary border border-border/50 shadow-md group-hover:shadow-xl transition-all duration-300">
-                                            {col.previewImages?.[0] ? (
-                                                <Image
-                                                    src={col.previewImages[0]}
-                                                    alt={col.name}
-                                                    width={400}
-                                                    height={300}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
-                                                    <Lock size={32} />
+                    {activeTab === 'my' ? (
+                        collections.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {collections.map(col => (
+                                    <Link href={`/collection/${col.id}`} key={col.id}>
+                                        <div className="group cursor-pointer flex flex-col gap-3">
+                                            <div className="relative overflow-hidden rounded-xl aspect-[4/3] bg-surface-secondary border border-border/50 shadow-md group-hover:shadow-xl transition-all duration-300">
+                                                {col.previewImages?.[0] ? (
+                                                    <Image
+                                                        src={col.previewImages[0]}
+                                                        alt={col.name}
+                                                        width={400}
+                                                        height={300}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
+                                                        <Lock size={32} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-16">
+                                                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{col.name}</h3>
+                                                    <p className="text-xs text-white/70">{col.itemCount > 0 ? `${col.itemCount} items` : 'Collection'}</p>
                                                 </div>
-                                            )}
-                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-16">
-                                                <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{col.name}</h3>
-                                                <p className="text-xs text-white/70">{col.itemCount > 0 ? `${col.itemCount} items` : 'Collection'}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center bg-surface/30 rounded-2xl border border-dashed border-border text-muted-foreground">
+                                <p className="text-lg mb-2">No public collections yet.</p>
+                                <p className="text-sm">This user hasn't shared any collections publicly.</p>
+                            </div>
+                        )
+                    ) : activeTab === 'saved' ? (
+                        savedCollections.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {savedCollections.map(col => (
+                                    <Link href={`/collection/${col.collectionId}`} key={col.id}>
+                                        <div className="group cursor-pointer flex flex-col gap-3">
+                                            <div className="relative overflow-hidden rounded-xl aspect-[4/3] bg-surface-secondary border border-border/50 shadow-md group-hover:shadow-xl transition-all duration-300">
+                                                {col.previewImage ? (
+                                                    <Image
+                                                        src={col.previewImage}
+                                                        alt={col.collectionName}
+                                                        width={400}
+                                                        height={300}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
+                                                        unoptimized
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
+                                                        <Bookmark size={32} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-16">
+                                                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{col.collectionName}</h3>
+                                                    <p className="text-xs text-white/70">Saved Collection</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center bg-surface/30 rounded-2xl border border-dashed border-border text-muted-foreground">
+                                <p className="text-lg mb-2">No saved collections yet.</p>
+                                <p className="text-sm">Collections you save from others will appear here.</p>
+                            </div>
+                        )
                     ) : (
-                        <div className="py-12 text-center bg-surface/30 rounded-2xl border border-dashed border-border text-muted-foreground">
-                            <p className="text-lg mb-2">No public collections yet.</p>
-                            <p className="text-sm">This user hasn't shared any collections publicly.</p>
-                        </div>
+                        likedCollections.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {likedCollections.map(col => (
+                                    <Link href={`/collection/${col.collectionId}`} key={col.id}>
+                                        <div className="group cursor-pointer flex flex-col gap-3">
+                                            <div className="relative overflow-hidden rounded-xl aspect-[4/3] bg-surface-secondary border border-border/50 shadow-md group-hover:shadow-xl transition-all duration-300">
+                                                {col.previewImage ? (
+                                                    <Image
+                                                        src={col.previewImage}
+                                                        alt={col.collectionName}
+                                                        width={400}
+                                                        height={300}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
+                                                        unoptimized
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
+                                                        <Heart size={32} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-16">
+                                                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{col.collectionName}</h3>
+                                                    <p className="text-xs text-white/70">Liked Collection</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center bg-surface/30 rounded-2xl border border-dashed border-border text-muted-foreground">
+                                <p className="text-lg mb-2">No liked collections yet.</p>
+                                <p className="text-sm">Collections you like from others will appear here.</p>
+                            </div>
+                        )
                     )}
                 </div>
             </div>

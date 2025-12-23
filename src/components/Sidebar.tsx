@@ -12,10 +12,12 @@ import {
     PanelLeftClose,
     LogOut,
     Compass,
-    MessageSquare
+    MessageSquare,
+    Bookmark
 } from 'lucide-react';
 import { chatService } from '@/lib/chat-service';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface SidebarProps {
     className?: string;
@@ -36,6 +38,7 @@ export default function Sidebar({
 }: SidebarProps) {
     const pathname = usePathname();
     const { user } = useAuth();
+    const { t } = useLanguage();
     const [unreadCount, setUnreadCount] = React.useState(0);
 
     useEffect(() => {
@@ -48,11 +51,12 @@ export default function Sidebar({
     }, [user]);
 
     const menuItems = [
-        { name: 'Discover', icon: Compass, href: '/discover' },
-        { name: 'All Items', icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
-        { name: 'Collections', icon: Folder, href: '/collections' },
-        { name: 'Favorites', icon: Heart, href: '/favorites' },
-        { name: 'Messages', icon: MessageSquare, href: '/messages', badge: unreadCount },
+        { name: t('common.discover'), icon: Compass, href: '/discover' },
+        { name: t('common.all_items'), icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
+        { name: t('common.collections'), icon: Folder, href: '/collections' },
+        { name: t('common.favorites'), icon: Heart, href: '/favorites' },
+        { name: t('common.saved'), icon: Bookmark, href: '/collections/saved' },
+        { name: t('common.messages'), icon: MessageSquare, href: '/messages', badge: unreadCount },
     ];
 
     return (
@@ -84,16 +88,16 @@ export default function Sidebar({
                         className={`
                         flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-[var(--text-main)] rounded-xl transition-all border border-white/5 group
                         ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full p-3'}
-                    `} title={isCollapsed ? "Add New Collection" : undefined}>
+                    `} title={isCollapsed ? t('common.add_collection') : undefined}>
                         <div className={`w-6 h-6 rounded-full bg-primary flex items-center justify-center text-black shrink-0 ${isCollapsed ? '' : ''}`}>
                             <Plus size={16} />
                         </div>
-                        {!isCollapsed && <span className="font-medium text-sm whitespace-nowrap">Add Collection</span>}
+                        {!isCollapsed && <span className="font-medium text-sm whitespace-nowrap">{t('common.add_collection')}</span>}
                     </Link>
                 </div>
 
                 <div className="space-y-1">
-                    {!isCollapsed && <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">Menu</h3>}
+                    {!isCollapsed && <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">{t('common.menu')}</h3>}
 
                     {menuItems.map((item) => {
                         const isActive = item.name === 'All Items' ? (!activeCollection && pathname === '/dashboard') : pathname === item.href;
@@ -144,8 +148,8 @@ export default function Sidebar({
 
                 <div className={`mt-8 space-y-1 ${isCollapsed ? 'hidden' : 'block'}`}>
                     <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center justify-between whitespace-nowrap">
-                        <span>Collections</span>
-                        <Link href="/collections/create" className="hover:text-foreground transition-colors"><Plus size={14} /></Link>
+                        <span>{t('common.collections')}</span>
+                        <Link href="/collections/create" className="hover:text-foreground transition-colors" ><Plus size={14} /></Link>
                     </h3>
                     {collections.map((col) => {
                         const isColActive = activeCollection === col;

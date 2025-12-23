@@ -14,11 +14,13 @@ import {
     User,
     PanelLeft,
     PanelLeftClose,
-    LogOut
+    LogOut,
+    Plus
 } from 'lucide-react';
 
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 import { NotificationDropdown } from './NotificationDropdown';
 import { NotificationService } from '@/lib/notification-service';
 import { useAuth } from '@/context/AuthContext';
@@ -122,7 +124,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     };
 
     return (
-        <div className="h-screen w-full bg-background font-sans text-[var(--text-main)] flex overflow-hidden selection:bg-primary selection:text-primary-foreground">
+        <div className="h-screen w-full bg-background font-sans text-foreground flex overflow-hidden selection:bg-primary selection:text-primary-foreground">
 
             {/* 1. SIDEBAR (Desktop: Visible, Mobile: Hidden) */}
             <Sidebar
@@ -155,13 +157,13 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
-                            className="p-2 -ml-2 text-[var(--text-main)] md:hidden hover:bg-surface rounded-lg transition-colors"
+                            className="p-2 -ml-2 text-foreground md:hidden hover:bg-surface rounded-lg transition-colors"
                         >
                             <Menu size={24} />
                         </button>
                         <button
                             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                            className="hidden md:flex p-2 text-muted-foreground hover:text-[var(--text-main)] hover:bg-surface rounded-lg transition-colors"
+                            className="hidden md:flex p-2 text-muted-foreground hover:text-foreground hover:bg-surface rounded-lg transition-colors"
                             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                         >
                             {isSidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
@@ -176,7 +178,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                             type="text"
                             placeholder="Search your items..."
                             onChange={(e) => onSearch && onSearch(e.target.value)}
-                            className="w-full bg-surface border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-[var(--text-main)] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm"
+                            className="w-full bg-surface-highlight/50 border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm"
                         />
                     </div>
 
@@ -184,7 +186,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                     {/* Add Product Field */}
                     <div className="flex-1 max-w-2xl mx-auto group relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span className="material-symbols-outlined text-muted-foreground group-focus-within:text-primary transition-colors text-[18px]">add_link</span>
+                            <Plus size={18} className="text-muted-foreground group-focus-within:text-primary transition-colors" />
                         </div>
                         <div className='relative'>
                             <input
@@ -194,7 +196,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                                 onChange={(e) => setProductUrl(e.target.value)}
                                 onKeyDown={handleUrlSubmit}
                                 disabled={isAdding}
-                                className="w-full bg-surface border-none rounded-full py-2.5 pl-11 pr-16 text-sm text-[var(--text-main)] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm disabled:opacity-50"
+                                className="w-full bg-surface-highlight/50 border border-transparent focus:border-primary/20 rounded-full py-2.5 pl-11 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all shadow-sm disabled:opacity-50"
                             />
                             {isAdding && (
                                 <div className="absolute top-1/2 right-14 -translate-y-1/2 flex items-center">
@@ -210,13 +212,14 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2 md:gap-4 ml-auto">
+                        <LanguageToggle />
                         <ThemeToggle />
 
 
                         <div className="relative" ref={notifRef}>
                             <button
                                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                                className="relative p-2 text-muted-foreground hover:text-[var(--text-main)] transition-colors rounded-full hover:bg-surface"
+                                className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-surface-secondary"
                             >
                                 <Bell size={20} />
                                 {unreadNotifCount > 0 && (

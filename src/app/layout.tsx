@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthContextProvider } from "@/context/AuthContext";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 export default function RootLayout({
   children,
@@ -50,8 +51,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthContextProvider>
-            {children}
-            <ThemeSwitcher />
+            <LanguageProvider>
+              {children}
+              <ThemeSwitcher />
+            </LanguageProvider>
           </AuthContextProvider>
         </ThemeProvider>
       </body>

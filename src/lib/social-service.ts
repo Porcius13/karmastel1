@@ -10,9 +10,12 @@ import {
     where,
     getDocs,
     increment,
+    orderBy,
     updateDoc,
-    runTransaction
+    runTransaction,
+    collectionGroup
 } from "firebase/firestore";
+import { Compass, MessageSquare, Bookmark } from 'lucide-react';
 import { NotificationService } from "./notification-service";
 
 export const SocialService = {
@@ -28,11 +31,13 @@ export const SocialService = {
         if (isLiked) {
             // Unlike
             await deleteDoc(likeRef);
-            // Optional: Decrement like count on collection doc if we store it
         } else {
             // Like
             await setDoc(likeRef, {
                 uid: currentUserId,
+                collectionId: collectionId,
+                collectionName: collectionName,
+                ownerId: ownerId,
                 timestamp: serverTimestamp()
             });
 
@@ -98,6 +103,47 @@ export const SocialService = {
             }
         }
         return !isSaved;
+    },
+
+    // Fetch saved collections for a user
+    async getSavedCollections(userId: string) {
+        if (!userId) return [];
+
+        try {
+            const savedRef = collection(db, "users", userId, "saved_collections");
+            const q = query(savedRef, orderBy("timestamp", "desc"));
+            const snapshot = await getDocs(q);
+
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (error) {
+            console.error("Error getting saved collections:", error);
+            return [];
+        }
+    },
+
+    // Fetch liked collections for a user
+    async getLikedCollections(userId: string) {
+        if (!userId) return [];
+
+        try {
+            const likesQuery = query(
+                collectionGroup(db, "likes"),
+                where("uid", "==", userId),
+                orderBy("timestamp", "desc")
+            );
+            const snapshot = await getDocs(likesQuery);
+
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (error) {
+            console.error("Error getting liked collections:", error);
+            return [];
+        }
     },
 
     // Check status
