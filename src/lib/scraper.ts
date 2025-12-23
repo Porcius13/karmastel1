@@ -145,20 +145,22 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             const isDecathlon = cleanUrlStr.includes("decathlon.com.tr");
             const isNike = cleanUrlStr.includes("nike.com");
             const isTagrean = cleanUrlStr.includes("tagrean.com");
+            const isMavi = cleanUrlStr.includes("mavi.com");
             const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/121.0.0.0 Safari/537.36';
 
             await page.setUserAgent(userAgent);
 
-            if (isAmazon || isDecathlon || isNike || isTagrean) {
+            if (isAmazon || isDecathlon || isNike || isTagrean || isMavi) {
                 await page.setExtraHTTPHeaders({
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                     'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
                     'sec-ch-ua-mobile': '?0',
                     'sec-ch-ua-platform': '"Windows"',
-                    'Upgrade-Insecure-Requests': '1'
+                    'Upgrade-Insecure-Requests': '1',
+                    'Referer': 'https://www.google.com/'
                 });
-                await new Promise(r => setTimeout(r, Math.floor(Math.random() * 500) + 200));
+                await new Promise(r => setTimeout(r, Math.floor(Math.random() * 800) + 400));
             }
 
             page.on('console', msg => {
