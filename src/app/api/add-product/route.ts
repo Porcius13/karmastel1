@@ -17,7 +17,6 @@ function getCorsHeaders(origin: string | null) {
         "Access-Control-Allow-Origin": isAllowed ? origin : "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-        "Access-Control-Allow-Credentials": "true",
     };
 }
 

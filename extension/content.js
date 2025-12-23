@@ -44,23 +44,21 @@
                     return;
                 }
 
-                const response = await fetch('https://favduck.com/api/add-product', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                const response = await new Promise((resolve) => {
+                    chrome.runtime.sendMessage({
+                        type: 'SAVE_PRODUCT',
                         url: window.location.href,
                         userId: userId,
                         collection: 'Default'
-                    })
+                    }, resolve);
                 });
 
-                const data = await response.json();
-
-                if (data.success) {
+                if (response && response.success) {
                     saveBtn.classList.add('saved');
                     showToast("Product saved to FAVDUCK!", "success");
                 } else {
-                    throw new Error(data.error || "Save failed");
+                    const errorMsg = response?.error || (response?.data?.error) || "Save failed";
+                    throw new Error(errorMsg);
                 }
 
             } catch (err) {

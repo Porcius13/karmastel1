@@ -139,27 +139,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const selectedCollection = collectionSelect.value;
 
-            const response = await fetch(`${API_BASE}/add-product`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    type: 'SAVE_PRODUCT',
                     url: tab.url,
                     userId: userId,
                     collection: selectedCollection || "Default",
                     threshold: notifyThreshold
-                })
+                }, resolve);
             });
 
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                const serverError = data.error || `Server returned ${response.status}`;
-                throw new Error(serverError);
+            if (response && response.success) {
+                // Success UI
+                mainView.classList.add('hidden');
+                resultCard.classList.remove('hidden');
+            } else {
+                const errorMsg = response?.error || (response?.data?.error) || "Failed to save product.";
+                throw new Error(errorMsg);
             }
-
-            // Success UI
-            mainView.classList.add('hidden');
-            resultCard.classList.remove('hidden');
 
         } catch (error) {
             console.error("FAVDUCK Extension Error:", error);
