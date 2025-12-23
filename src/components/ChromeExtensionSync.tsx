@@ -19,7 +19,7 @@ export default function ChromeExtensionSync() {
 
     // The extension ID (replace with your actual Web Store ID after publishing)
     // For local development, this is the ID shown in chrome://extensions
-    const EXTENSION_ID = "kbgdfdfojkpkndnjlbhliailkkokjkpd";
+    const EXTENSION_ID = "cnfhfbbjjflpadaangjcfenaffdlbbbj";
 
     useEffect(() => {
         if (!user || typeof window === "undefined") return;
