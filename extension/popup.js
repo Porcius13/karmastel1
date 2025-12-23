@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let userId = null;
     let collections = [];
     let notifyThreshold = 'any';
-    const API_BASE = "http://localhost:3000/api";
+    const API_BASE = "https://favduck.com/api";
 
     // Initial Load
     await init();
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeBtn.addEventListener('click', () => window.close());
 
     viewListBtn.addEventListener('click', () => {
-        chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
+        chrome.tabs.create({ url: 'https://favduck.com/dashboard' });
         window.close();
     });
 

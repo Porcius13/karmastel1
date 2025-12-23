@@ -24,7 +24,7 @@
         // Logo redirects to Dashboard
         logoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.open('http://localhost:3000/dashboard', '_blank');
+            window.open('https://favduck.com/dashboard', '_blank');
         });
 
         // Save button scrapes and saves
@@ -44,7 +44,7 @@
                     return;
                 }
 
-                const response = await fetch('http://localhost:3000/api/add-product', {
+                const response = await fetch('https://favduck.com/api/add-product', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

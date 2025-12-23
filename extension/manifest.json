@@ -27,16 +27,14 @@
         }
     ],
     "host_permissions": [
-        "http://localhost:3000/*",
-        "https://miayis-tracker.vercel.app/*",
         "https://favduck.com/*",
+        "https://miayis-tracker.vercel.app/*",
         "https://*/*"
     ],
     "externally_connectable": {
         "matches": [
-            "http://localhost:3000/*",
-            "https://miayis-tracker.vercel.app/*",
-            "https://favduck.com/*"
+            "https://favduck.com/*",
+            "https://miayis-tracker.vercel.app/*"
         ]
     },
     "action": {

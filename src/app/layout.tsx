@@ -30,6 +30,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthContextProvider } from "@/context/AuthContext";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageProvider } from "@/context/LanguageContext";
+import ChromeExtensionSync from "@/components/ChromeExtensionSync";
 
 export default function RootLayout({
   children,
@@ -52,6 +53,7 @@ export default function RootLayout({
         >
           <AuthContextProvider>
             <LanguageProvider>
+              <ChromeExtensionSync />
               {children}
               <ThemeSwitcher />
             </LanguageProvider>
