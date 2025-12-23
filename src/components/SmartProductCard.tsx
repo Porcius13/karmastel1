@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
@@ -36,6 +37,7 @@ interface SmartProductCardProps {
 
 export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [], viewMode = 'grid' }) => {
     const router = useRouter();
+    const { t } = useLanguage();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
 
@@ -56,7 +58,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
     const handleToggleFavorite = async () => {
         if (!user) {
-            alert("Please sign in to add to favorites.");
+            alert(t('product.signin_to_favorite'));
             return;
         }
 
@@ -95,7 +97,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
             console.error("Error updating favorite", e);
             // Revert
             setProduct((prev) => ({ ...prev, isFavorite: !newStatus }));
-            alert("An error occurred during the process.");
+            alert(t('common.error_occurred'));
         }
     };
 
@@ -120,17 +122,17 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 const { id, ...dataToSave } = newProductData;
 
                 await addDoc(collection(db, "products"), dataToSave);
-                alert(`Product added to ${newCollection}!`);
+                alert(t('product.cloned_success').replace('{collection}', newCollection));
 
             } catch (e) {
                 console.error("Error adding to collection", e);
-                alert("Failed to add to collection.");
+                alert(t('product.cloned_error'));
             }
         }
     };
 
     const handleRemoveFromCollection = async () => {
-        if (!confirm(`Are you sure you want to remove this item from "${product.collection}"?`)) return;
+        if (!confirm(t('product.remove_col_confirm').replace('{collection}', product.collection || ''))) return;
 
         try {
             const { deleteDoc, doc, updateDoc } = await import("firebase/firestore");
@@ -149,11 +151,11 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
             // Sync local state optimistically
             setProduct(prev => ({ ...prev, collection: undefined }));
-            alert("Product removed from collection.");
+            alert(t('product.removed_from_col'));
 
         } catch (e) {
             console.error("Error removing from collection", e);
-            alert("Action failed.");
+            alert(t('product.action_failed'));
         }
     };
 
@@ -180,7 +182,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 <button
                     onClick={() => setIsEditModalOpen(true)}
                     className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass}`)}
-                    title="Edit"
+                    title={t('product.edit')}
                 >
                     <Pencil size={18} />
                 </button>
@@ -191,7 +193,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         target="_blank"
                         rel="noopener noreferrer"
                         className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-75`)}
-                        title="Go to store"
+                        title={t('product.go_to_store')}
                     >
                         <ExternalLink size={20} />
                     </a>
@@ -199,7 +201,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     <button
                         onClick={onSetAlarm}
                         className={btnClass(`bg-surfaceHighlight text-foreground hover:bg-danger hover:text-white ${animClass} delay-75`)}
-                        title="Set stock alert"
+                        title={t('product.set_alert')}
                     >
                         <Bell size={20} />
                     </button>
@@ -209,7 +211,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 <button
                     onClick={onOpenChart}
                     className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-100`)}
-                    title="Price analysis"
+                    title={t('product.price_analysis')}
                 >
                     <TrendingDown size={20} />
                 </button>
@@ -218,7 +220,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 <button
                     onClick={handleToggleFavorite}
                     className={btnClass(`bg-surface ${product.isFavorite ? 'text-danger hover:bg-danger/10' : 'text-foreground hover:bg-danger/10 hover:text-danger'} ${isList ? '' : 'absolute bottom-4 right-4'} `)}
-                    title="Add to/Remove from favorites"
+                    title={t('product.favorite_toggle')}
                 >
                     <Heart size={18} fill={product.isFavorite ? "currentColor" : "none"} />
                 </button>
@@ -237,7 +239,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             }
                         }}
                         className={btnClass(`bg-surface text-foreground hover:bg-primary/20 hover:text-primary`)}
-                        title="Add to collection"
+                        title={t('product.add_to_collection')}
                     >
                         <FolderPlus size={18} />
                     </button>
@@ -251,9 +253,9 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 handleRemoveFromCollection();
                             }}
                             className={btnClass(`bg-surface text-orange-500 hover:bg-orange-500/10`)}
-                            title="Remove from collection"
+                            title={t('product.remove_from_collection')}
                         >
-                            <TrendingDown size={18} className="rotate-45" /> {/* Temporary icon for remove if not finding exact lucide one here, but I'll use something better */}
+                            <TrendingDown size={18} className="rotate-45" />
                         </button>
                     )}
                 </div>
@@ -267,7 +269,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             onDelete();
                         }}
                         className={btnClass(`bg-surface-secondary text-foreground hover:bg-danger hover:text-white delay-300`)}
-                        title="Delete"
+                        title={t('product.delete')}
                     >
                         <Trash2 size={20} />
                     </button>
@@ -305,14 +307,14 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
                         {!product.inStock && (
                             <span className="bg-danger/10 backdrop-blur border border-danger/20 text-danger text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide">
-                                Out of Stock
+                                {t('product.out_of_stock')}
                             </span>
                         )}
                         {/* Target Price Met Badge */}
                         {isTargetMet && (
                             <span className="bg-primary/90 backdrop-blur text-primary-foreground text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1 shadow-glow animate-pulse">
                                 <CheckCircle2 size={12} className="stroke-[3px]" />
-                                Deal 🔥
+                                {t('product.deal_badge')}
                             </span>
                         )}
 
@@ -334,7 +336,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     {product.targetPrice && !isTargetMet && (
                         <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                             <Bell size={10} />
-                            <span>Target: {product.targetPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+                            <span>{t('product.target_price')}: {product.targetPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
                         </div>
                     )}
                 </div>
@@ -348,7 +350,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             </div>
                             {product.targetPrice && !isTargetMet && (
                                 <div className="text-xs text-muted-foreground">
-                                    Target: {product.targetPrice.toLocaleString('en-US', { style: 'currency', currency: 'TRY' })}
+                                    {t('product.target_price')}: {product.targetPrice.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                                 </div>
                             )}
                         </div>
@@ -384,7 +386,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     >
                         <div className="p-2 max-h-48 overflow-y-auto">
                             <div className="text-[10px] font-black text-muted-foreground px-3 py-2 mb-1 uppercase tracking-widest border-b border-border/50">
-                                Collections
+                                {t('common.collections')}
                             </div>
                             {collections.length > 0 ? (
                                 collections.map((col) => (
@@ -402,7 +404,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 ))
                             ) : (
                                 <div className="text-xs text-muted-foreground px-3 py-6 italic text-center">
-                                    No collections
+                                    {t('product.no_collections')}
                                 </div>
                             )}
                         </div>
@@ -411,7 +413,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 onClick={() => router.push('/collections/create')}
                                 className="w-full text-center text-[10px] font-bold text-primary hover:text-primary/80 py-1.5 tracking-wide"
                             >
-                                + CREATE NEW
+                                + {t('product.create_new')}
                             </button>
                         </div>
                     </div>

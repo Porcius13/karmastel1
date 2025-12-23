@@ -116,7 +116,7 @@ export default function ProfilePage() {
             window.location.href = '/login';
         } catch (error) {
             console.error("Error deleting account:", error);
-            alert("Failed to delete account. You might need to re-login to perform this action.");
+            alert(t('profile.account_delete_error'));
         } finally {
             setDeleting(false);
         }
@@ -142,7 +142,7 @@ export default function ProfilePage() {
             window.location.reload();
         } catch (error) {
             console.error("Error updating avatar:", error);
-            alert("Failed to update avatar");
+            alert(t('profile.error'));
         }
         setIsAvatarOpen(false);
     };
@@ -266,20 +266,19 @@ export default function ProfilePage() {
                     </section>
                 </div>
 
-                {/* 3. BROWSER EXTENSION */}
                 <section className="bg-surface rounded-3xl p-6 border border-surface-highlight/50 mt-8">
                     <div className="flex items-center gap-2 mb-6 text-primary">
                         <Puzzle size={20} />
-                        <h2 className="text-lg font-bold text-foreground uppercase tracking-wider">Browser Extension</h2>
+                        <h2 className="text-lg font-bold text-foreground uppercase tracking-wider">{t('profile.extension_title')}</h2>
                     </div>
 
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            Use the FAVDUCK Saver extension to save products from any e-commerce site with one click.
+                            {t('profile.extension_desc').replace('{brand}', t('common.brand_name'))}
                         </p>
 
                         <div className="p-4 bg-background border border-dashed border-surface-highlight rounded-2xl">
-                            <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-widest">Your Extension ID</label>
+                            <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-widest">{t('profile.extension_id_label')}</label>
                             <div className="flex items-center gap-3">
                                 <code className="flex-1 bg-surfaceHighlight/30 text-primary px-4 py-2 rounded-lg font-mono text-sm overflow-x-auto whitespace-nowrap">
                                     {user?.uid}
@@ -289,7 +288,7 @@ export default function ProfilePage() {
                                     className="p-2 bg-surfaceHighlight hover:bg-surfaceHighlight/80 rounded-lg text-foreground transition-all flex items-center gap-2"
                                 >
                                     {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
-                                    <span className="text-xs font-bold">{copied ? 'COPIED' : 'COPY'}</span>
+                                    <span className="text-xs font-bold">{copied ? t('profile.copied') : t('profile.copy')}</span>
                                 </button>
                             </div>
                         </div>
@@ -299,9 +298,9 @@ export default function ProfilePage() {
                                 <Puzzle size={16} />
                             </div>
                             <div className="space-y-1">
-                                <h4 className="text-xs font-bold text-foreground">How to use?</h4>
+                                <h4 className="text-xs font-bold text-foreground">{t('profile.how_to_use')}</h4>
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    Open the extension, go to <span className="font-bold text-foreground">Settings</span>, and paste your User ID. Now you can save products directly!
+                                    {t('profile.how_to_use_desc').replace('{settings}', t('common.settings'))}
                                 </p>
                             </div>
                         </div>

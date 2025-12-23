@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === "SAVE_PRODUCT") {
         const { url, userId, collection, threshold } = request;
 
-        fetch('https://favduck.com/api/add-product', {
+        fetch('http://localhost:3000/api/add-product', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

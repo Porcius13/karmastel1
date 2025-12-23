@@ -17,11 +17,25 @@ export interface ScrapedData {
 
 // --- SMART PRICE PARSER ---
 
-function smartPriceParse(raw: any): number {
+export function smartPriceParse(raw: any): number {
     if (!raw) return 0;
     if (typeof raw === 'number') return raw;
 
     let str = raw.toString().trim();
+
+    // Detect malformed Shopify-style TRY prices like "8.920.00"
+    // If we have multiple dots and the last part is exactly 2 digits, 
+    // it's likely X.XXX.YY format where only the last one is decimal.
+    const dots = (str.match(/\./g) || []).length;
+    if (dots > 1) {
+        const parts = str.split('.');
+        const lastPart = parts[parts.length - 1];
+        if (lastPart.length === 2 && /^\d+$/.test(lastPart)) {
+            // Treat all but last dot as thousands separators
+            str = parts.slice(0, -1).join('') + '.' + lastPart;
+        }
+    }
+
     // Remove currency and other non-numeric chars, but keep . and ,
     str = str.replace(/[^\d.,]/g, "");
 
@@ -146,11 +160,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             const isNike = cleanUrlStr.includes("nike.com");
             const isTagrean = cleanUrlStr.includes("tagrean.com");
             const isMavi = cleanUrlStr.includes("mavi.com");
+            const isOldCotton = cleanUrlStr.includes("oldcottoncargo.com.tr");
+            const isKufVintage = cleanUrlStr.includes("kufvintage.com");
             const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/121.0.0.0 Safari/537.36';
 
             await page.setUserAgent(userAgent);
 
-            if (isAmazon || isDecathlon || isNike || isTagrean || isMavi) {
+            if (isAmazon || isDecathlon || isNike || isTagrean || isMavi || isOldCotton || isKufVintage) {
                 await page.setExtraHTTPHeaders({
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -160,8 +176,20 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     'Upgrade-Insecure-Requests': '1',
                     'Referer': 'https://www.google.com/'
                 });
+                // Allow stylesheets for these sites if they use getComputedStyle (Ticimax/Mavi)
+                // Actually Mavi doesn't strictly need it, but Ticimax price might benefit from visibility checks
+                await page.setViewport({
+                    width: 1366 + Math.floor(Math.random() * 100),
+                    height: 768 + Math.floor(Math.random() * 100),
+                    deviceScaleFactor: 1
+                });
                 await new Promise(r => setTimeout(r, Math.floor(Math.random() * 800) + 400));
             }
+
+            // Stealth: Basic WebDriver removal (handled by getBrowser default args, but keeping simple one)
+            await page.evaluateOnNewDocument(() => {
+                Object.defineProperty(navigator, 'webdriver', { get: () => false });
+            });
 
             page.on('console', msg => {
                 const text = msg.text();
@@ -185,14 +213,25 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             });
 
             try {
-                await page.goto(cleanUrlStr, { waitUntil: 'domcontentloaded', timeout: 25000 });
+                await page.goto(cleanUrlStr, {
+                    waitUntil: isMavi ? 'networkidle2' : 'domcontentloaded',
+                    timeout: 30000
+                });
+
+                if (isMavi) {
+                    try {
+                        await page.waitForSelector('.product-detail, .product__gallery, script[type="application/ld+json"]', { timeout: 10000 });
+                    } catch (e) {
+                        console.warn("Mavi: Specific elements didn't load.");
+                    }
+                }
             } catch (error) {
                 console.warn("Navigation Timeout (25s) - Proceeding to extraction...");
             }
 
             await new Promise(r => setTimeout(r, 1000));
 
-            if (url.includes('hepsiburada') || url.includes('decathlon') || url.includes('trendyol') || url.includes('amazon') || url.includes('hypeofsteps')) {
+            if (url.includes('hepsiburada') || url.includes('decathlon') || url.includes('trendyol') || url.includes('amazon') || url.includes('hypeofsteps') || url.includes('mavi')) {
                 try {
                     if (url.includes('amazon')) {
                         const isSplash = await page.evaluate(() => {
@@ -211,15 +250,21 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     }
                     await page.evaluate(() => window.scrollBy(0, 1000));
                     await new Promise(r => setTimeout(r, 2000));
+
+                    if (isMavi) {
+                        // Simulate a small mouse move to trigger any focus/bot checks
+                        await page.mouse.move(100, 100);
+                        await page.mouse.move(200, 200);
+                    }
                 } catch (e) { }
             }
 
-            const domData = await page.evaluate(new Function(`
-                var result = { title: "", price: "", image: "", currency: "TRY", inStock: true, source: "manual" };
+            const domData = await page.evaluate(() => {
+                const result = { title: "", price: "", image: "", currency: "TRY", inStock: true, source: "manual" as string };
 
-                var cleanUrl = function (raw) {
+                const cleanUrl = function (raw: any) {
                     if (!raw) return "";
-                    var u = raw;
+                    let u = raw;
                     if (Array.isArray(raw)) u = raw[0];
                     if (typeof raw === 'object' && raw !== null) {
                         u = raw.contentUrl || raw.url || (Array.isArray(raw.image) ? raw.image[0] : raw.image) || raw;
@@ -227,61 +272,75 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     }
                     if (typeof u !== 'string') return "";
                     if (u.indexOf('#') === 0 || u.indexOf('/#') !== -1) return "";
-                    
+
                     if (u.indexOf('//') === 0) {
                         u = 'https:' + u;
                     } else if (u.indexOf('http') !== 0 && u.indexOf('data:') !== 0) {
-                        var origin = window.location.origin;
+                        const origin = window.location.origin;
                         if (u.indexOf('/') === 0) {
                             u = origin + u;
                         } else {
-                            if (u.indexOf('files/') === 0) {
-                               u = origin + '/' + u;
-                            } else {
-                               u = origin + '/' + u;
-                            }
+                            u = origin + '/' + u;
                         }
                     } else if (u.indexOf('https:') === 0 && u.indexOf('https://') !== 0) {
-                        // Malformed Shopify path: https:files/ -> https://domain/cdn/shop/files/
                         if (window.location.hostname.indexOf('hypeofsteps.com') !== -1) {
-                           u = u.replace('https:', window.location.origin + '/cdn/shop/');
+                            u = u.replace('https:', window.location.origin + '/cdn/shop/');
                         } else {
-                           u = u.replace('https:', window.location.origin + '/');
+                            u = u.replace('https:', window.location.origin + '/');
                         }
                     }
-                    
+
                     if (u.indexOf('http://') === 0) u = u.replace('http://', 'https://');
                     return u;
                 };
 
-                var safePrice = function (val) {
+                const safePrice = function (val: any) {
                     if (val === undefined || val === null) return "";
                     return val.toString().trim();
                 };
 
+                // Strategy 0: Shopify Global State (Highly reliable for price)
+                try {
+                    const shopMeta = (window as any).meta || ((window as any).ShopifyAnalytics && (window as any).ShopifyAnalytics.meta);
+                    if (shopMeta && shopMeta.product) {
+                        const p = shopMeta.product;
+                        if (!result.title) result.title = p.variants && p.variants[0] && p.variants[0].name || p.type || "";
+                        if (p.variants && p.variants[0] && p.variants[0].price !== undefined) {
+                            // Shopify usually gives price in subunits (e.g. 892000 for 8920.00)
+                            const raw = p.variants[0].price;
+                            if (typeof raw === 'number' && raw > 1000) {
+                                result.price = (raw / 100).toString();
+                            } else {
+                                result.price = raw.toString();
+                            }
+                            result.source = 'json-ld';
+                        }
+                    }
+                } catch (e) { }
+
                 // Strategy A: JSON-LD (Primary)
                 try {
-                    var scripts = document.querySelectorAll('script[type="application/ld+json"]');
-                    for (var i = 0; i < scripts.length; i++) {
+                    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                    for (let i = 0; i < scripts.length; i++) {
                         try {
-                            var json = JSON.parse(scripts[i].innerHTML);
-                            var findProduct = function (data) {
+                            const json = JSON.parse(scripts[i].innerHTML);
+                            const findProduct = function (data: any): any {
                                 if (!data || typeof data !== 'object') return null;
                                 if (Array.isArray(data)) {
-                                    for (var j = 0; j < data.length; j++) {
-                                        var f = findProduct(data[j]);
+                                    for (let j = 0; j < data.length; j++) {
+                                        const f = findProduct(data[j]);
                                         if (f) return f;
                                     }
                                 } else {
                                     if (data['@graph']) return findProduct(data['@graph']);
-                                    var type = data['@type'];
-                                    var isP = function (t) {
+                                    const type = data['@type'];
+                                    const isP = function (t: any) {
                                         return typeof t === 'string' && (t === 'Product' || t === 'ProductGroup' || t.indexOf('Product') !== -1);
                                     };
                                     if (type && (Array.isArray(type) ? type.some(isP) : isP(type))) return data;
-                                    for (var k in data) {
+                                    for (const k in data) {
                                         if (data[k] && typeof data[k] === 'object' && k !== 'isPartOf' && k !== 'breadcrumb') {
-                                            var f = findProduct(data[k]);
+                                            const f = findProduct(data[k]);
                                             if (f) return f;
                                         }
                                     }
@@ -289,27 +348,27 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                                 return null;
                             };
 
-                            var p = findProduct(json);
+                            const p = findProduct(json);
                             if (p) {
                                 if (p.name && !result.title) result.title = p.name;
-                                var img = cleanUrl(p.image);
+                                const img = cleanUrl(p.image);
                                 if (img && !result.image) result.image = img;
-                                
-                                var getOffer = function (obj) {
+
+                                const getOffer = function (obj: any) {
                                     if (obj.offers) return Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
                                     if (obj.hasVariant) {
-                                        var variants = Array.isArray(obj.hasVariant) ? obj.hasVariant : [obj.hasVariant];
+                                        const variants = Array.isArray(obj.hasVariant) ? obj.hasVariant : [obj.hasVariant];
                                         return (variants[0] && variants[0].offers) ? (Array.isArray(variants[0].offers) ? variants[0].offers[0] : variants[0].offers) : null;
                                     }
                                     return null;
                                 };
 
-                                var offer = getOffer(p);
+                                const offer = getOffer(p);
                                 if (offer) {
-                                    var pr = offer.price || offer.lowPrice || offer.highPrice;
+                                    let pr = offer.price || offer.lowPrice || offer.highPrice;
                                     if (!pr && offer.priceSpecification) {
-                                        var specs = Array.isArray(offer.priceSpecification) ? offer.priceSpecification : [offer.priceSpecification];
-                                        for (var k = 0; k < specs.length; k++) {
+                                        const specs = Array.isArray(offer.priceSpecification) ? offer.priceSpecification : [offer.priceSpecification];
+                                        for (let k = 0; k < specs.length; k++) {
                                             if (specs[k].price) {
                                                 pr = specs[k].price;
                                                 break;
@@ -323,107 +382,236 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                                     }
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // Strategy B: Meta Tags (Fallback)
                 try {
                     if (!result.price) {
-                        var pm = document.querySelector('meta[property="product:price:amount"]') || 
-                                 document.querySelector('meta[property="og:price:amount"]') || 
-                                 document.querySelector('meta[name="twitter:data1"]') ||
-                                 document.querySelector('meta[itemprop="price"]');
+                        const pm = (document.querySelector('meta[property="product:price:amount"]') ||
+                            document.querySelector('meta[property="og:price:amount"]') ||
+                            document.querySelector('meta[name="twitter:data1"]') ||
+                            document.querySelector('meta[itemprop="price"]')) as HTMLMetaElement;
                         if (pm) {
-                            result.price = safePrice(pm.getAttribute('content') || pm.getAttribute('value') || pm.textContent);
+                            result.price = safePrice(pm.getAttribute('content') || pm.getAttribute('value') || pm.innerText);
                             result.source = 'meta-tag';
                         }
                     }
                     if (!result.image) {
-                        var imgm = document.querySelector('meta[property="og:image"]') || document.querySelector('meta[name="twitter:image"]');
+                        const imgm = (document.querySelector('meta[property="og:image"]') || document.querySelector('meta[name="twitter:image"]')) as HTMLMetaElement;
                         if (imgm) result.image = cleanUrl(imgm.getAttribute('content'));
                     }
                     if (!result.title) {
-                        var tm = document.querySelector('meta[property="og:title"]') || document.querySelector('title');
-                        if (tm) result.title = tm.getAttribute('content') || tm.textContent;
+                        const tm = (document.querySelector('meta[property="og:title"]') || document.querySelector('title')) as HTMLMetaElement;
+                        if (tm) result.title = tm.getAttribute('content') || tm.innerText || tm.innerText;
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // Site Specifics
-                var host = window.location.hostname;
-                if (host.indexOf("tagrean.com") !== -1) {
-                    var tEl = document.querySelector('h1.product_title');
-                    if (tEl) result.title = tEl.textContent.trim();
-                    var pEl = document.querySelector('.summary.entry-summary .price bdi') || document.querySelector('.woocommerce-Price-amount bdi');
-                    if (pEl) {
-                        result.price = safePrice(pEl.textContent);
-                        result.source = 'dom-selectors';
+                try {
+                    const host = window.location.hostname;
+                    if (host.indexOf("tagrean.com") !== -1) {
+                        const tEl = document.querySelector('h1.product_title');
+                        if (tEl) result.title = tEl.textContent?.trim() || "";
+                        const pEl = document.querySelector('.summary.entry-summary .price bdi') || document.querySelector('.woocommerce-Price-amount bdi');
+                        if (pEl) {
+                            result.price = safePrice(pEl.textContent);
+                            result.source = 'dom-selectors';
+                        }
+                        const iEl = (document.querySelector('.wp-post-image') || document.querySelector('.woocommerce-product-gallery__image img')) as HTMLImageElement;
+                        if (iEl && iEl.src) result.image = cleanUrl(iEl.src);
                     }
-                    var iEl = document.querySelector('.wp-post-image') || document.querySelector('.woocommerce-product-gallery__image img');
-                    if (iEl && iEl.src) result.image = cleanUrl(iEl.src);
-                }
 
-                if (host.indexOf("hypeofsteps.com") !== -1) {
-                    var hImgSelectors = [
-                        'a.lightbox-image',
-                        'meta[property="og:image"]',
-                        '.product__media img',
-                        'img[src*="/cdn/shop/files/"]'
-                    ];
-                    for(var k=0; k<hImgSelectors.length; k++) {
-                        var el = document.querySelector(hImgSelectors[k]);
-                        if(el) {
-                            var hSrc = el.getAttribute('href') || el.getAttribute('content') || el.src || el.getAttribute('data-src');
-                            if(hSrc) {
-                                // Remove Shopify width/size suffixes for full res
-                                hSrc = hSrc.split('&width=')[0].split('_large')[0].split('_medium')[0];
-                                result.image = cleanUrl(hSrc);
+                    if (host.indexOf("hypeofsteps.com") !== -1) {
+                        const hImgSelectors = [
+                            'a.lightbox-image',
+                            'meta[property="og:image"]',
+                            '.product__media img',
+                            'img[src*="/cdn/shop/files/"]'
+                        ];
+                        for (let k = 0; k < hImgSelectors.length; k++) {
+                            const el = document.querySelector(hImgSelectors[k]);
+                            if (el) {
+                                let hSrc = el.getAttribute('href') || el.getAttribute('content') || (el as HTMLImageElement).src || el.getAttribute('data-src');
+                                if (hSrc) {
+                                    // Remove Shopify width/size suffixes for full res
+                                    hSrc = hSrc.split('&width=')[0].split('_large')[0].split('_medium')[0];
+                                    result.image = cleanUrl(hSrc);
+                                    result.source = 'dom-selectors';
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (host.indexOf("trendyol") !== -1) {
+                        const ep = (window as any)["__envoy_product-detail__PROPS"];
+                        if (ep && ep.product) {
+                            const p = ep.product;
+                            if (!result.title) result.title = p.name;
+                            const v = p.winnerVariant || (p.variants && p.variants[0]);
+                            if (v && v.price && v.price.discountedPrice && !result.price) {
+                                result.price = v.price.discountedPrice.value + "";
+                                result.source = 'json-ld';
+                            }
+                            if (p.images && p.images[0] && !result.image) result.image = cleanUrl(p.images[0]);
+                        }
+                    }
+
+                    if (host.indexOf("hepsiburada") !== -1) {
+                        const rs = document.getElementById('reduxStore');
+                        if (rs) {
+                            try {
+                                const state = JSON.parse(rs.innerHTML);
+                                const p = state && state.productState && state.productState.product;
+                                if (p) {
+                                    if (!result.title) result.title = p.name;
+                                    if (p.prices && p.prices[0] && !result.price) {
+                                        result.price = p.prices[0].value + "";
+                                        result.source = 'json-ld';
+                                    }
+                                    if (p.media && p.media[0] && !result.image) result.image = cleanUrl(p.media[0].url.replace('{size}', '1500'));
+                                }
+                            } catch (e) { }
+                        }
+                    }
+
+                    if (host.indexOf("decathlon") !== -1) {
+                        const pEl = document.querySelector('.prc__active-price') ||
+                            document.querySelector('.price-box__price') ||
+                            document.querySelector('.vtmn-price__amount') ||
+                            document.querySelector('.vtmn-price');
+
+                        if (pEl) {
+                            result.price = safePrice(pEl.textContent);
+                            result.source = 'dom-selectors';
+                        }
+
+                        if (!result.price) {
+                            try {
+                                const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                                for (let i = 0; i < scripts.length; i++) {
+                                    const json = JSON.parse(scripts[i].textContent || "");
+                                    if (json['@type'] === 'Product') {
+                                        if (!result.title) result.title = json.name;
+                                        if (!result.image && json.image) result.image = cleanUrl(json.image);
+                                        if (json.offers) {
+                                            const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
+                                            if (offer.price) {
+                                                result.price = offer.price;
+                                                result.source = 'json-ld';
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (e) { }
+                        }
+                    }
+
+                    if (host.indexOf("mavi") !== -1 || host.indexOf("mavi.com") !== -1) {
+                        try {
+                            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                            for (let i = 0; i < scripts.length; i++) {
+                                const json = JSON.parse(scripts[i].textContent || "");
+                                if (json && (json['@type'] === 'Product' || (json['@graph'] && json['@graph'].some((item: any) => item['@type'] === 'Product')))) {
+                                    const p = json['@type'] === 'Product' ? json : json['@graph'].find((item: any) => item['@type'] === 'Product');
+                                    if (p && p.image) {
+                                        const imgUrl = Array.isArray(p.image) ? p.image[0] : (typeof p.image === 'string' ? p.image : p.image.url || p.image.contentUrl);
+                                        if (imgUrl) {
+                                            result.image = cleanUrl(imgUrl);
+                                            result.source = 'json-ld';
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) { }
+
+                        if (!result.image) {
+                            const imgSelectors = [
+                                '.product__gallery-item.swiper-slide-active img',
+                                '.product__gallery-item img',
+                                '.product-detail-carousel .slick-current img',
+                                '.product-detail-carousel .slick-slide:not(.slick-cloned) img',
+                                'img[data-src*="/products/"]',
+                                'picture img',
+                                'meta[property="og:image"]'
+                            ];
+
+                            for (let k = 0; k < imgSelectors.length; k++) {
+                                const el = document.querySelector(imgSelectors[k]) as HTMLImageElement;
+                                if (el) {
+                                    let src = el.src || el.getAttribute('data-src') || el.getAttribute('srcset') || el.getAttribute('content');
+                                    if (src) {
+                                        if (src.indexOf(',') !== -1) src = src.split(',')[0].trim().split(' ')[0];
+                                        if (src && src.indexOf('svg') === -1 && src.indexOf('icon') === -1 && src.indexOf('data:image') === -1) {
+                                            result.image = cleanUrl(src);
+                                            result.source = 'dom-selectors';
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!result.image) {
+                            const m = document.documentElement.innerHTML.match(/https:\/\/(sky-static\.mavi\.com|mavicdn\.akamaized\.net)\/products\/[^\x22\x27]+\.jpg/);
+                            if (m) {
+                                result.image = cleanUrl(m[0]);
+                                result.source = 'regex-scan';
+                            }
+                        }
+                    }
+
+                    if (host.indexOf("oldcottoncargo.com.tr") !== -1 || host.indexOf("kufvintage.com") !== -1 || document.querySelector('.TicimaxRuntime')) {
+                        // Ticimax / Old Cotton Cargo / Kuf Vintage Specifics
+                        if ((window as any).productDetailModel) {
+                            const model = (window as any).productDetailModel;
+                            if (model.productName && !result.title) result.title = model.productName;
+                            if (model.product && model.product.indirimliFiyatiStr && !result.price) {
+                                result.price = safePrice(model.product.indirimliFiyatiStr);
+                                result.source = 'json-ld';
+                            } else if (model.indirimliFiyatiStr && !result.price) {
+                                result.price = safePrice(model.indirimliFiyatiStr);
+                                result.source = 'json-ld';
+                            }
+                        }
+                        const tEl = document.querySelector('h1');
+                        if (tEl) result.title = tEl.textContent?.trim() || "";
+
+                        const pSels = ['.indirimliFiyat .spanFiyat', '#fiyat', '.spanFiyat', '.product-price'];
+                        for (let j = 0; j < pSels.length; j++) {
+                            const pEl = document.querySelector(pSels[j]);
+                            if (pEl && pEl.textContent && /[0-9]/.test(pEl.textContent)) {
+                                result.price = safePrice(pEl.textContent);
                                 result.source = 'dom-selectors';
                                 break;
                             }
                         }
-                    }
-                }
 
-                if (host.indexOf("trendyol") !== -1) {
-                    var ep = window["__envoy_product-detail__PROPS"];
-                    if (ep && ep.product) {
-                        var p = ep.product;
-                        if (!result.title) result.title = p.name;
-                        var v = p.winnerVariant || (p.variants && p.variants[0]);
-                        if (v && v.price && v.price.discountedPrice && !result.price) {
-                            result.price = v.price.discountedPrice.value + "";
-                            result.source = 'json-ld';
-                        }
-                        if (p.images && p.images[0] && !result.image) result.image = cleanUrl(p.images[0]);
-                    }
-                }
-
-                if (host.indexOf("hepsiburada") !== -1) {
-                    var rs = document.getElementById('reduxStore');
-                    if (rs) {
-                        try {
-                            var state = JSON.parse(rs.innerHTML);
-                            var p = state && state.productState && state.productState.product;
-                            if (p) {
-                                if (!result.title) result.title = p.name;
-                                if (p.prices && p.prices[0] && !result.price) {
-                                    result.price = p.prices[0].value + "";
-                                    result.source = 'json-ld';
+                        const imgSels = ['#imgUrunResim', '.product-image img', 'img[data-src*="/urunler/"]'];
+                        for (let k = 0; k < imgSels.length; k++) {
+                            const iEl = document.querySelector(imgSels[k]) as HTMLImageElement;
+                            if (iEl) {
+                                const src = iEl.src || iEl.getAttribute('data-src');
+                                if (src && src.indexOf('data:') !== 0) {
+                                    result.image = cleanUrl(src);
+                                    result.source = 'dom-selectors';
+                                    break;
                                 }
-                                if (p.media && p.media[0] && !result.image) result.image = cleanUrl(p.media[0].url.replace('{size}', '1500'));
                             }
-                        } catch (e) {}
+                        }
                     }
-                }
+                } catch (e) { console.error("Site specific error:", e); }
 
                 if (!result.price) {
-                    var sels = ['.price', '.product-price', '.amount', '[itemprop="price"]', '.SinglePrice_center__SWK1D'];
-                    for (var s = 0; s < sels.length; s++) {
-                        var el = document.querySelector(sels[s]);
+                    const sels = ['.price', '.product-price', '.amount', '[itemprop="price"]', '.SinglePrice_center__SWK1D'];
+                    for (let s = 0; s < sels.length; s++) {
+                        const el = document.querySelector(sels[s]);
                         if (el) {
-                            var val = el.getAttribute('content') || el.textContent;
-                            if (val && /\\d/.test(val)) {
+                            const val = el.getAttribute('content') || el.textContent;
+                            if (val && /[0-9]/.test(val)) {
                                 result.price = safePrice(val);
                                 result.source = 'dom-selectors';
                                 break;
@@ -431,14 +619,14 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                         }
                     }
                 }
-                
+
                 if (!result.image) {
-                   var iEl = document.querySelector('img[itemprop="image"]') || document.querySelector('.product-image img');
-                   if (iEl && iEl.src) result.image = cleanUrl(iEl.src);
+                    const iEl = (document.querySelector('img[itemprop="image"]') || document.querySelector('.product-image img')) as HTMLImageElement;
+                    if (iEl && iEl.src) result.image = cleanUrl(iEl.src);
                 }
 
-                return JSON.parse(JSON.stringify(result));
-            `) as any);
+                return result;
+            });
 
             const finalData: ScrapedData = {
                 title: domData.title || "",
@@ -464,7 +652,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     }
                 }
                 if (!finalData.image) {
-                    const hbMatches = Array.from(html.matchAll(/(?:https?:)?\/\/hbimg\.hepsiburada\.net\/[^"'\s>]+/g));
+                    const hbMatches = Array.from(html.matchAll(/(?:https?:)?\/\/hbimg\.hepsiburada\.net\/[^\x22\x27\s>]+/g));
                     if (hbMatches.length > 0) {
                         finalData.image = hbMatches[0][0].startsWith('//') ? 'https:' + hbMatches[0][0] : hbMatches[0][0];
                     }
@@ -476,6 +664,14 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             return finalData;
 
         } catch (error: any) {
+            const pageTitle = browser ? await (async () => {
+                try {
+                    const pages = await browser.pages();
+                    return pages.length > 0 ? await pages[pages.length - 1].title() : "unknown";
+                } catch (e) { return "unknown"; }
+            })() : "unknown";
+
+            console.error(`Scrape Error [Page: ${pageTitle}]:`, error.message);
             if (Sentry.captureException) Sentry.captureException(error);
             return {
                 title: "",
@@ -485,7 +681,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 currency: "TRY",
                 inStock: true,
                 source: 'manual',
-                error: error.message
+                error: `Page: ${pageTitle} | Error: ${error.message}`
             };
         } finally {
             if (browser) await browser.close();

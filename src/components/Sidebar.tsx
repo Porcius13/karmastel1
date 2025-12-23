@@ -100,7 +100,7 @@ export default function Sidebar({
                     {!isCollapsed && <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 whitespace-nowrap">{t('common.menu')}</h3>}
 
                     {menuItems.map((item) => {
-                        const isActive = item.name === 'All Items' ? (!activeCollection && pathname === '/dashboard') : pathname === item.href;
+                        const isActive = item.href === '/dashboard' ? (!activeCollection && pathname === '/dashboard') : pathname === item.href;
 
                         return (
                             <Link
@@ -108,7 +108,7 @@ export default function Sidebar({
                                 href={item.href}
                                 onClick={(e) => {
                                     if (item.action) {
-                                        if (item.name === 'All Items') {
+                                        if (item.href === '/dashboard') {
                                             if (pathname === '/dashboard') {
                                                 e.preventDefault();
                                                 item.action?.();
