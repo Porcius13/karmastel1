@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { DashboardShell } from '@/components/DashboardShell';
+import { useLanguage } from '@/context/LanguageContext';
 import {
     ArrowLeft,
     Mail,
@@ -47,6 +48,7 @@ const Toggle = ({ label, description, checked, onChange, disabled, isPro }: any)
 );
 
 export default function NotificationSettingsPage() {
+    const { t } = useLanguage();
     const [settings, setSettings] = useState({
         email_price_drops: true,
         email_back_in_stock: true,
@@ -68,7 +70,7 @@ export default function NotificationSettingsPage() {
         // Simulate API call
         setTimeout(() => {
             setSaving(false);
-            alert("Settings saved!");
+            alert(t('settings.settings_success'));
         }, 1000);
     };
 
@@ -82,8 +84,8 @@ export default function NotificationSettingsPage() {
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-black text-white tracking-tight">Notification Preferences</h1>
-                        <p className="text-muted-foreground text-sm">Manage how and when you want to be notified.</p>
+                        <h1 className="text-2xl font-black text-white tracking-tight">{t('settings.notifications_title')}</h1>
+                        <p className="text-muted-foreground text-sm">{t('settings.notifications_subtitle')}</p>
                     </div>
                 </div>
 
@@ -93,25 +95,25 @@ export default function NotificationSettingsPage() {
                     <section className="bg-surface rounded-3xl p-6 border border-surfaceHighlight/50 overflow-hidden">
                         <div className="flex items-center gap-2 mb-6 text-primary">
                             <Mail size={20} />
-                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">Email Notifications</h2>
+                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">{t('settings.email_notifications')}</h2>
                         </div>
 
                         <div className="space-y-0">
                             <Toggle
-                                label="Price Drops"
-                                description="Get notified immediately when an item in your wishlist drops in price."
+                                label={t('settings.price_drops')}
+                                description={t('settings.price_drops_desc')}
                                 checked={settings.email_price_drops}
                                 onChange={() => handleToggle('email_price_drops')}
                             />
                             <Toggle
-                                label="Back In Stock"
-                                description="Be the first to know when tracked items are available again."
+                                label={t('settings.back_in_stock')}
+                                description={t('settings.back_in_stock_desc')}
                                 checked={settings.email_back_in_stock}
                                 onChange={() => handleToggle('email_back_in_stock')}
                             />
                             <Toggle
-                                label="Weekly Digest"
-                                description="A summary of market trends and your collection's value changes sent every Monday."
+                                label={t('settings.weekly_digest')}
+                                description={t('settings.weekly_digest_desc')}
                                 checked={settings.email_weekly_digest}
                                 onChange={() => handleToggle('email_weekly_digest')}
                             />
@@ -122,25 +124,25 @@ export default function NotificationSettingsPage() {
                     <section className="bg-surface rounded-3xl p-6 border border-surfaceHighlight/50">
                         <div className="flex items-center gap-2 mb-6 text-primary">
                             <BellRing size={20} />
-                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">Push & SMS</h2>
+                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">{t('settings.push_sms')}</h2>
                         </div>
 
                         <div className="space-y-0">
                             <Toggle
-                                label="Browser Notifications"
-                                description="Receive rich notifications on your desktop while you browse."
+                                label={t('settings.browser_notifications')}
+                                description={t('settings.browser_notifications_desc')}
                                 checked={settings.push_browser}
                                 onChange={() => handleToggle('push_browser')}
                             />
                             <Toggle
-                                label="Mobile App Alerts"
-                                description="Push notifications sent to your iOS or Android devices."
+                                label={t('settings.mobile_app_alerts')}
+                                description={t('settings.mobile_app_alerts_desc')}
                                 checked={settings.push_mobile}
                                 onChange={() => handleToggle('push_mobile')}
                             />
                             <Toggle
-                                label="SMS Alerts"
-                                description="Instant text messages for critical stock updates (High priority)."
+                                label={t('settings.sms_alerts')}
+                                description={t('settings.sms_alerts_desc')}
                                 checked={settings.sms_urgent}
                                 onChange={() => handleToggle('sms_urgent')}
                                 disabled={true}
@@ -149,7 +151,12 @@ export default function NotificationSettingsPage() {
                             <div className="bg-surfaceHighlight/20 p-4 rounded-xl flex gap-3 items-start mt-2">
                                 <Info size={16} className="text-primary mt-0.5" />
                                 <p className="text-xs text-muted-foreground">
-                                    SMS Alerts are available exclusively on the <span className="text-white font-bold" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK Pro</span> plan due to carrier costs. Upgrade to enable.
+                                    {t('settings.sms_pro_hint').split('{pro_plan}').map((part, i) => (
+                                        <React.Fragment key={i}>
+                                            {part}
+                                            {i === 0 && <span className="text-white font-bold" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>{t('common.brand_name')} Pro</span>}
+                                        </React.Fragment>
+                                    ))}
                                 </p>
                             </div>
                         </div>
@@ -159,11 +166,11 @@ export default function NotificationSettingsPage() {
                     <section className="bg-surface rounded-3xl p-6 border border-surfaceHighlight/50">
                         <div className="flex items-center gap-2 mb-6 text-primary">
                             <ShieldCheck size={20} />
-                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">Security</h2>
+                            <h2 className="text-lg font-bold text-white uppercase tracking-wider">{t('settings.security')}</h2>
                         </div>
                         <Toggle
-                            label="Unusual Login Activity"
-                            description="We'll alert you if your account is accessed from a new device or location."
+                            label={t('settings.unusual_login')}
+                            description={t('settings.unusual_login_desc')}
                             checked={settings.security_login}
                             onChange={() => handleToggle('security_login')}
                         />
@@ -176,11 +183,11 @@ export default function NotificationSettingsPage() {
             <div className="fixed bottom-0 left-0 lg:left-20 right-0 p-4 bg-background/80 backdrop-blur-xl border-t border-surfaceHighlight/50 flex justify-center z-40 animate-in slide-in-from-bottom-5">
                 <div className="w-full max-w-3xl flex items-center justify-between">
                     <span className="text-sm text-muted-foreground hidden sm:block">
-                        You have unsaved changes
+                        {t('profile.save_hint')}
                     </span>
                     <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
                         <button className="px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-white transition-colors">
-                            Reset
+                            {t('settings.reset')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -190,12 +197,12 @@ export default function NotificationSettingsPage() {
                             {saving ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Saving...</span>
+                                    <span>{t('common.saving')}</span>
                                 </>
                             ) : (
                                 <>
                                     <Save size={18} />
-                                    <span>Save Changes</span>
+                                    <span>{t('edit_modal.save_changes')}</span>
                                 </>
                             )}
                         </button>

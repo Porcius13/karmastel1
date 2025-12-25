@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Folder, Trash2, Globe, Lock, Share2 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface CollectionCardProps {
     name: string;
@@ -18,6 +19,7 @@ interface CollectionCardProps {
 
 
 export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTogglePrivacy, allowDelete = true, image, onUpdateImage }: CollectionCardProps) {
+    const { t } = useLanguage();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = React.useState(false);
 
@@ -29,7 +31,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                 await onUpdateImage(file, name);
             } catch (error) {
                 console.error("Upload failed", error);
-                alert("Failed to upload image.");
+                alert(t('common.failed_upload'));
             } finally {
                 setIsUploading(false);
             }
@@ -42,7 +44,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
         // Construct public URL. Format: /share/shareId
         const url = `${window.location.origin}/share/${shareId}`;
         navigator.clipboard.writeText(url);
-        alert("Link copied to clipboard!");
+        alert(t('common.link_copied'));
     };
 
     return (
@@ -72,7 +74,9 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                     <h3 className="font-bold text-foreground text-xl mb-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-center drop-shadow-md">
                         {name}
                     </h3>
-                    <p className="text-sm text-muted-foreground font-medium drop-shadow-md">{count} items</p>
+                    <p className="text-sm text-muted-foreground font-medium drop-shadow-md">
+                        {count === 1 ? t('common.items_count_single') : t('common.items_count').replace('{count}', count.toString())}
+                    </p>
                 </div>
 
 
@@ -88,7 +92,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                             onTogglePrivacy(e, name);
                         }}
                         className={`p-2 rounded-full transition-colors ${isPublic ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-surface-highlight text-muted-foreground hover:bg-surface-highlight/80'}`}
-                        title={isPublic ? "Public (Click to make Private)" : "Private (Click to make Public)"}
+                        title={isPublic ? t('collections.make_public') : t('collections.make_private')}
                     >
                         {isPublic ? <Globe size={16} /> : <Lock size={16} />}
                     </button>
@@ -100,7 +104,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                     <button
                         onClick={handleShare}
                         className="p-2 bg-surface-highlight hover:bg-primary hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
-                        title="Copy Share Link"
+                        title={t('collections.copy_share_link')}
                     >
                         <Share2 size={16} />
                     </button>
@@ -114,7 +118,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                             onDelete(e, name);
                         }}
                         className="p-2 bg-surface-highlight hover:bg-danger hover:text-white rounded-full text-muted-foreground transition-all opacity-0 group-hover:opacity-100 shadow-md cursor-pointer active:scale-95"
-                        title="Delete Collection"
+                        title={t('collections.delete_collection')}
                     >
                         <Trash2 size={16} />
                     </button>

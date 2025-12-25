@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { chatService, Chat } from '@/lib/chat-service';
 import { DashboardShell } from '@/components/DashboardShell';
 import { MessageSquare, Circle, ChevronRight } from 'lucide-react';
@@ -11,6 +12,7 @@ import { db } from '@/lib/firebase';
 
 export default function MessagesInboxPage() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const router = useRouter();
     const [chats, setChats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,8 +58,8 @@ export default function MessagesInboxPage() {
         <DashboardShell>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-black text-foreground mb-2">Messages</h1>
-                    <p className="text-muted-foreground">Your conversations with other users.</p>
+                    <h1 className="text-3xl font-black text-foreground mb-2">{t('messages.title')}</h1>
+                    <p className="text-muted-foreground">{t('messages.subtitle')}</p>
                 </div>
 
                 {loading ? (
@@ -69,9 +71,9 @@ export default function MessagesInboxPage() {
                         <div className="w-16 h-16 bg-surface-highlight rounded-full flex items-center justify-center mb-4 text-muted-foreground">
                             <MessageSquare size={32} />
                         </div>
-                        <h3 className="text-xl font-bold text-foreground">No messages yet</h3>
+                        <h3 className="text-xl font-bold text-foreground">{t('messages.no_messages')}</h3>
                         <p className="text-muted-foreground max-w-xs mx-auto mt-2">
-                            You can use the "Send Message" button on their profiles to get in touch with friends.
+                            {t('messages.no_messages_desc')}
                         </p>
                     </div>
                 ) : (
@@ -105,7 +107,7 @@ export default function MessagesInboxPage() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-bold text-foreground truncate">
-                                                @{otherUser.username || otherUser.displayName || 'User'}
+                                                @{otherUser.username || otherUser.displayName || t('common.user')}
                                             </span>
                                             <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
                                                 {formatTimestamp(chat.lastTimestamp)}

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
@@ -13,8 +14,9 @@ interface EditProductModalProps {
 }
 
 export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isOpen, onClose, collections }) => {
+    const { t } = useLanguage();
     const [title, setTitle] = useState(product.title);
-    const [collection, setCollection] = useState(product.collection || 'Uncategorized');
+    const [collection, setCollection] = useState(product.collection || t('edit_modal.uncategorized'));
     const [targetPrice, setTargetPrice] = useState(product.targetPrice || '');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -26,12 +28,12 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
             const productRef = doc(db, "products", product.id);
             await updateDoc(productRef, {
                 title,
-                collection: collection === 'Uncategorized' ? null : collection, // Convert 'Uncategorized' back to explicit null or handle consistency
+                collection: collection === t('edit_modal.uncategorized') ? null : collection, // Convert back to null
                 targetPrice: targetPrice ? Number(targetPrice) : null
             });
 
             // Auto-Set Collection Cover Logic (Client-Side)
-            if (collection && collection !== 'Uncategorized' && product.image) {
+            if (collection && collection !== t('edit_modal.uncategorized') && product.image) {
                 try {
                     // 1. Generate ID
                     const safeName = typeof window !== 'undefined'
@@ -62,7 +64,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
             onClose();
         } catch (error) {
             console.error("Error updating product:", error);
-            alert("Failed to update product.");
+            alert(t('edit_modal.update_error'));
         } finally {
             setIsSaving(false);
         }
@@ -74,7 +76,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-surfaceHighlight flex items-center justify-between bg-surface">
-                    <h3 className="text-lg font-bold text-white">Edit Product</h3>
+                    <h3 className="text-lg font-bold text-white">{t('edit_modal.title')}</h3>
                     <button onClick={onClose} className="text-muted-foreground hover:text-white transition-colors">
                         <X size={20} />
                     </button>
@@ -85,7 +87,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
 
                     {/* Title Input */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product Title</label>
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('edit_modal.product_title')}</label>
                         <input
                             type="text"
                             value={title}
@@ -96,13 +98,13 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
 
                     {/* Collection Select */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Collection</label>
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('edit_modal.collection')}</label>
                         <select
                             value={collection}
                             onChange={(e) => setCollection(e.target.value)}
                             className="w-full bg-background border border-surfaceHighlight rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer"
                         >
-                            <option value="Uncategorized">Uncategorized</option>
+                            <option value={t('edit_modal.uncategorized')}>{t('edit_modal.uncategorized')}</option>
                             {collections.map(c => (
                                 <option key={c} value={c}>{c}</option>
                             ))}
@@ -111,13 +113,13 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
 
                     {/* Target Price Input */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Target Price (TL)</label>
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('edit_modal.target_price_label')}</label>
                         <div className="relative">
                             <input
                                 type="number"
                                 value={targetPrice}
                                 onChange={(e) => setTargetPrice(e.target.value)}
-                                placeholder="Enter desired price..."
+                                placeholder={t('edit_modal.target_price_placeholder')}
                                 className="w-full bg-surface border border-primary/20 rounded-lg px-4 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                             />
                             <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
@@ -125,7 +127,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                             </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            We will notify you when the price drops below this amount.
+                            {t('edit_modal.target_price_hint')}
                         </p>
                     </div>
 
@@ -137,7 +139,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                         onClick={onClose}
                         className="px-4 py-2 text-sm font-medium text-white hover:bg-surfaceHighlight rounded-lg transition-colors"
                     >
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSave}
@@ -149,7 +151,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                         ) : (
                             <Save size={16} />
                         )}
-                        Save Changes
+                        {t('edit_modal.save_changes')}
                     </button>
                 </div>
 

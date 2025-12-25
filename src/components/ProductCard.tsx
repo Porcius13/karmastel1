@@ -1,5 +1,6 @@
-import { Trash2, ExternalLink } from "lucide-react";
 import React from "react";
+import { Trash2, ExternalLink } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductCardProps {
     title: string;
@@ -18,6 +19,8 @@ export const ProductCard = ({
     onRemove,
     showRemove = false,
 }: ProductCardProps) => {
+    const { t } = useLanguage();
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow duration-200">
             <div className="relative aspect-video w-full overflow-hidden bg-slate-50">
@@ -33,7 +36,7 @@ export const ProductCard = ({
                     />
                 ) : (
                     <div className="flex items-center justify-center w-full h-full text-slate-400">
-                        No Image
+                        {t('common.no_image')}
                     </div>
                 )}
             </div>
@@ -52,7 +55,7 @@ export const ProductCard = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
-                            title="Open Link"
+                            title={t('common.open_link')}
                         >
                             <ExternalLink size={20} />
                         </a>
@@ -60,7 +63,7 @@ export const ProductCard = ({
                             <button
                                 onClick={onRemove}
                                 className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
-                                title="Remove"
+                                title={t('common.remove')}
                             >
                                 <Trash2 size={20} />
                             </button>

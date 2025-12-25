@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { addProduct } from "@/actions/product-actions";
 import { Loader2, Plus } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Initial State
 const initialState = {
@@ -13,6 +14,7 @@ const initialState = {
 
 function SubmitButton() {
     const { pending } = useFormStatus();
+    const { t } = useLanguage();
 
     return (
         <button
@@ -23,12 +25,12 @@ function SubmitButton() {
             {pending ? (
                 <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Ekleniyor...
+                    {t('common.adding')}
                 </>
             ) : (
                 <>
                     <Plus className="w-4 h-4" />
-                    Ekle
+                    {t('common.add')}
                 </>
             )}
         </button>
@@ -36,14 +38,8 @@ function SubmitButton() {
 }
 
 export function AddProductForm() {
-    // Note: useActionState is React 19/Canary feature. Next.js 14/15 uses `useFormState` (aliased often).
-    // If TypeScript errors, switch to useFormState from "react-dom".
-    // For now assuming Next.js latest which supports it or useFormState.
-    // Let's safe bet with useActionState but alias if needed.
-    // Reverting to `useFormState` from react-dom is safer for stability if exact version unknown.
-    // But user requested specific hooks. Let's use `useActionState` logic but import from "react" (or 'react-dom' in older)
-    // Actually, simply:
     const [state, formAction] = useActionState(addProduct, initialState);
+    const { t } = useLanguage();
 
     return (
         <div className="w-full max-w-xl mx-auto p-4 bg-white rounded-lg shadow-sm border mb-8">
@@ -51,7 +47,7 @@ export function AddProductForm() {
                 <input
                     type="url"
                     name="url"
-                    placeholder="https://www.hepsiburada.com/..."
+                    placeholder={t('common.placeholder_url')}
                     required
                     className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

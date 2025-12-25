@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { AVATAR_OPTIONS } from "@/lib/constants";
 import { X, Check } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AvatarSelectorProps {
     isOpen: boolean;
@@ -12,13 +13,14 @@ interface AvatarSelectorProps {
 }
 
 export function AvatarSelector({ isOpen, onClose, onSelect, currentAvatar }: AvatarSelectorProps) {
+    const { t } = useLanguage();
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-surface border border-surfaceHighlight rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between p-6 border-b border-border">
-                    <h3 className="text-xl font-bold text-foreground">Choose an Avatar</h3>
+                    <h3 className="text-xl font-bold text-foreground">{t('common.choose_avatar')}</h3>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-surface-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"

@@ -108,7 +108,14 @@ async function getBrowser() {
             const puppeteer = (await import('puppeteer')).default;
             return await puppeteer.launch({
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--test-type',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process'
+                ]
             });
         } catch (err) {
             console.error("Local puppeteer import failed.", err);
@@ -144,9 +151,187 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             };
         }
 
+
         if (scope.setTag) {
             scope.setTag("site", domainName);
             scope.setTag("scraper_mode", "hybrid_regex");
+        }
+
+
+
+
+        // --- DEDICATED H&M BYPASS (Puppeteer on Search Results) ---
+        if (domainName.includes("hm.com")) {
+            try {
+                const regionMatch = cleanUrlStr.match(/hm\.com\/([^\/]+)\//);
+                let region = regionMatch ? regionMatch[1] : "tr_tr";
+                const idMatch = cleanUrlStr.match(/productpage\.(\d+)\.html/) ||
+                    cleanUrlStr.match(/productpage\/(\d+)/) ||
+                    cleanUrlStr.match(/product\.(\d+)\.html/);
+                const productId = idMatch ? idMatch[1] : null;
+
+                if (productId) {
+                    console.log(`[H&M Scraper] Starting Search Strategy for ID: ${productId} (${region})`);
+
+                    let hmBrowser = null;
+                    try {
+                        hmBrowser = await getBrowser();
+                        const hmPage = await hmBrowser.newPage();
+                        await hmPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/122.0.0.0 Safari/537.36');
+                        await hmPage.setViewport({ width: 1366, height: 768 });
+
+                        // Try URL region first, then fallback to tr_tr or en_gb
+                        const regionsToTry = [region, 'tr_tr', 'en_gb', 'en_us'].filter((v, i, a) => a.indexOf(v) === i);
+
+                        for (const r of regionsToTry) {
+                            const searchUrl = `https://www2.hm.com/${r}/search-results.html?q=${productId}`;
+                            console.log(`[H&M Scraper] Trying Region ${r}...`);
+
+                            try {
+                                await hmPage.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+                                const result = await hmPage.evaluate((pid) => {
+                                    const article = document.querySelector(`article[data-articlecode="${pid}"]`) ||
+                                        document.querySelector(`article[data-articlecode^="${pid.substring(0, 10)}"]`);
+                                    if (!article) return null;
+
+                                    const title = article.querySelector('h3')?.textContent?.trim() || "";
+                                    const spans = Array.from(article.querySelectorAll('span'));
+                                    const priceTexts = spans.map(s => s.textContent || "").filter(t => t.includes('TL') || t.includes('TRY') || t.includes('£') || t.includes('$')).join(' ');
+                                    const img = article.querySelector('img');
+                                    const image = img?.getAttribute('data-src') || img?.getAttribute('src') || "";
+
+                                    return { title, priceTexts, image };
+                                }, productId);
+
+                                if (result && result.title) {
+                                    const finalResult: ScrapedData = {
+                                        title: result.title,
+                                        price: 0,
+                                        image: result.image,
+                                        currency: r.includes("tr") ? "TRY" : (r.includes("gb") ? "GBP" : "USD"),
+                                        description: "",
+                                        inStock: true,
+                                        source: 'dom-selectors'
+                                    };
+
+                                    const matches = result.priceTexts.match(/(\d+[\d.,]*)/g);
+                                    if (matches && matches.length > 0) {
+                                        const parsedPrices = matches.map(m => {
+                                            let s = m.replace(/[^\d.,]/g, "");
+                                            if (s.includes(',') && s.includes('.')) {
+                                                if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, "").replace(",", ".");
+                                                else s = s.replace(/,/g, "");
+                                            } else if (s.includes(',')) {
+                                                const pts = s.split(',');
+                                                if (pts[pts.length - 1].length === 3 && s.length > 4) s = s.replace(",", "");
+                                                else s = s.replace(",", ".");
+                                            } else if (s.includes('.')) {
+                                                const pts = s.split('.');
+                                                if (pts[pts.length - 1].length === 3 && s.length > 4) s = s.replace(".", "");
+                                            }
+                                            return parseFloat(s);
+                                        }).filter(p => !isNaN(p) && p > 0);
+
+                                        if (parsedPrices.length > 0) finalResult.price = Math.min(...parsedPrices);
+                                    }
+
+                                    if (finalResult.image && !finalResult.image.startsWith('http')) finalResult.image = 'https:' + finalResult.image;
+                                    if (finalResult.title && !finalResult.title.toLowerCase().includes("access denied")) {
+                                        console.log(`[H&M Scraper] Success in ${r}: ${finalResult.title}`);
+                                        return finalResult;
+                                    }
+                                }
+                            } catch (navErr) {
+                                console.warn(`[H&M Scraper] Region ${r} failed navigation.`);
+                            }
+                        }
+                    } finally {
+                        if (hmBrowser) await hmBrowser.close();
+                    }
+                }
+            } catch (e: any) {
+                console.warn("[H&M Scraper Critical Error]:", e.message);
+            }
+
+            const idFallback = cleanUrlStr.match(/productpage\.(\d+)\.html/)?.[1];
+            return {
+                title: idFallback ? `H&M Ürün (${idFallback})` : "H&M Ürün",
+                price: 0,
+                image: "https://placehold.co/600x600?text=H%26M+Product",
+                currency: "TRY",
+                description: "H&M koruması nedeniyle detaylar tam alınamadı. Manuel düzenleyebilirsiniz.",
+                inStock: true,
+                source: 'manual',
+                error: "H&M restricted access (Search bypass failed)."
+            };
+        }
+
+        // --- DEDICATED MAVI SCRAPER (Isolated) ---
+        if (domainName.includes("mavi.com")) {
+            console.log(`[Mavi Scraper] Starting Dedicated Strategy for: ${cleanUrlStr}`);
+            let mBrowser = null;
+            try {
+                mBrowser = await getBrowser();
+                const mPage = await mBrowser.newPage();
+                // Desktop UA is often safer for big brands to avoid "Install App" walls
+                await mPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
+                await mPage.setViewport({ width: 1920, height: 1080 });
+
+                await mPage.goto(cleanUrlStr, { waitUntil: 'networkidle0', timeout: 30000 });
+                // Wait for dynamic content
+                await new Promise(r => setTimeout(r, 2500));
+
+                try {
+                    await mPage.waitForSelector('.product__title, .product-title, h1', { timeout: 5000 });
+                } catch (e) { }
+
+                const result: any = await mPage.evaluate(() => {
+                    const res = { title: "", price: 0, image: "", currency: "TRY", inStock: true, source: "manual" };
+                    try {
+                        const h1 = document.querySelector('.product__title') || document.querySelector('h1.product-title') || document.querySelector('h1');
+                        if (h1) res.title = h1.textContent?.trim() || "";
+
+                        // Price
+                        const pEl = document.querySelector('.product__price -sale') || document.querySelector('[data-price-value]') || document.querySelector('.price');
+                        if (pEl) {
+                            const val = pEl.getAttribute('data-price-value') || pEl.textContent || "";
+                            if (val) {
+                                let v = val.replace(/[^\d.,]/g, "").replace(",", ".");
+                                res.price = parseFloat(v) || 0;
+                            }
+                        }
+
+                        // Image
+                        const img = document.querySelector('.product__gallery-item.swiper-slide-active img') ||
+                            document.querySelector('.product-detail-carousel .slick-track img') ||
+                            document.querySelector('.product__gallery img') ||
+                            document.querySelector('meta[property="og:image"]') ||
+                            document.querySelector('meta[name="og:image"]') ||
+                            document.querySelector('link[rel="preload"][as="image"]');
+
+                        if (img) {
+                            res.image = (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src || img.getAttribute('content') || img.getAttribute('href') || "";
+                        }
+
+                        res.source = 'dom-selectors-isolated';
+                    } catch (e) { }
+                    return res;
+                });
+
+                if (result.title) {
+                    return {
+                        ...result,
+                        description: "",
+                        source: result.source
+                    };
+                }
+
+            } catch (e: any) {
+                console.warn("[Mavi Scraper Error]:", e.message);
+            } finally {
+                if (mBrowser) await mBrowser.close();
+            }
         }
 
         let browser = null;
@@ -155,6 +340,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             browser = await getBrowser();
             const page = await browser.newPage();
 
+
             const isAmazon = cleanUrlStr.includes("amazon.com.tr");
             const isDecathlon = cleanUrlStr.includes("decathlon.com.tr");
             const isNike = cleanUrlStr.includes("nike.com");
@@ -162,27 +348,39 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             const isMavi = cleanUrlStr.includes("mavi.com");
             const isOldCotton = cleanUrlStr.includes("oldcottoncargo.com.tr");
             const isKufVintage = cleanUrlStr.includes("kufvintage.com");
-            const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/121.0.0.0 Safari/537.36';
+
+            const userAgents = [
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1',
+                'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A.230805.019; wv) AppleWebKit/537.36 (KHTML, Gecko) Version/4.0 Chrome/122.0.6261.64 Mobile Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/122.0.0.0 Safari/537.36'
+            ];
+            const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
 
             await page.setUserAgent(userAgent);
 
             if (isAmazon || isDecathlon || isNike || isTagrean || isMavi || isOldCotton || isKufVintage) {
+                const isMobile = userAgent.includes('iPhone') || userAgent.includes('Android');
+
                 await page.setExtraHTTPHeaders({
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-                    'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Windows"',
+                    'sec-ch-ua': isMobile ? '' : '"Not A(Brand";v="99", "Google Chrome";v="122", "Chromium";v="122"',
+                    'sec-ch-ua-mobile': isMobile ? '?1' : '?0',
+                    'sec-ch-ua-platform': isMobile ? (userAgent.includes('iPhone') ? '"iOS"' : '"Android"') : '"Windows"',
                     'Upgrade-Insecure-Requests': '1',
                     'Referer': 'https://www.google.com/'
                 });
+
                 // Allow stylesheets for these sites if they use getComputedStyle (Ticimax/Mavi)
                 // Actually Mavi doesn't strictly need it, but Ticimax price might benefit from visibility checks
                 await page.setViewport({
-                    width: 1366 + Math.floor(Math.random() * 100),
-                    height: 768 + Math.floor(Math.random() * 100),
-                    deviceScaleFactor: 1
+                    width: isMobile ? 390 : 1366,
+                    height: isMobile ? 844 : 768,
+                    deviceScaleFactor: isMobile ? 3 : 1,
+                    isMobile: isMobile,
+                    hasTouch: isMobile
                 });
+
                 await new Promise(r => setTimeout(r, Math.floor(Math.random() * 800) + 400));
             }
 
@@ -197,6 +395,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     console.log(`PAGE ${msg.type().toUpperCase()}:`, text);
                 }
             });
+
 
             await page.setRequestInterception(true);
             page.on('request', (req) => {
@@ -214,19 +413,21 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             try {
                 await page.goto(cleanUrlStr, {
-                    waitUntil: isMavi ? 'networkidle2' : 'domcontentloaded',
+                    waitUntil: isMavi ? 'networkidle0' : 'domcontentloaded', // Wait for full network idle for Mavi
                     timeout: 30000
                 });
 
                 if (isMavi) {
                     try {
-                        await page.waitForSelector('.product-detail, .product__gallery, script[type="application/ld+json"]', { timeout: 10000 });
+                        // Mavi is heavy on JS, wait a bit more ensuring metadata is populated
+                        await new Promise(r => setTimeout(r, 2000));
+                        await page.waitForSelector('body', { timeout: 10000 });
                     } catch (e) {
-                        console.warn("Mavi: Specific elements didn't load.");
+                        console.warn("Mavi: Specific verification timeout.");
                     }
                 }
             } catch (error) {
-                console.warn("Navigation Timeout (25s) - Proceeding to extraction...");
+                console.warn("Navigation failed or timeout - Proceeding to extraction...");
             }
 
             await new Promise(r => setTimeout(r, 1000));
@@ -446,20 +647,20 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     }
 
                     if (host.indexOf("trendyol") !== -1) {
-                        const ep = (window as any)["__envoy_product-detail__PROPS"];
-                        if (ep && ep.product) {
-                            const p = ep.product;
-                            if (!result.title) result.title = p.name;
-                            const v = p.winnerVariant || (p.variants && p.variants[0]);
-                            if (v && v.price && v.price.discountedPrice && !result.price) {
-                                result.price = v.price.discountedPrice.value + "";
-                                result.source = 'json-ld';
+                        try {
+                            const ep = (window as any)["__envoy_product-detail__PROPS"];
+                            if (ep && ep.product) {
+                                const p = ep.product;
+                                if (!result.title) result.title = p.name;
+                                const v = p.winnerVariant || (p.variants && p.variants[0]);
+                                if (v && v.price && v.price.discountedPrice && !result.price) {
+                                    result.price = v.price.discountedPrice.value + "";
+                                    result.source = 'json-ld';
+                                }
+                                if (p.images && p.images[0] && !result.image) result.image = cleanUrl(p.images[0]);
                             }
-                            if (p.images && p.images[0] && !result.image) result.image = cleanUrl(p.images[0]);
-                        }
-                    }
-
-                    if (host.indexOf("hepsiburada") !== -1) {
+                        } catch (e) { }
+                    } else if (host.indexOf("hepsiburada") !== -1) {
                         const rs = document.getElementById('reduxStore');
                         if (rs) {
                             try {
@@ -509,60 +710,6 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                         }
                     }
 
-                    if (host.indexOf("mavi") !== -1 || host.indexOf("mavi.com") !== -1) {
-                        try {
-                            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-                            for (let i = 0; i < scripts.length; i++) {
-                                const json = JSON.parse(scripts[i].textContent || "");
-                                if (json && (json['@type'] === 'Product' || (json['@graph'] && json['@graph'].some((item: any) => item['@type'] === 'Product')))) {
-                                    const p = json['@type'] === 'Product' ? json : json['@graph'].find((item: any) => item['@type'] === 'Product');
-                                    if (p && p.image) {
-                                        const imgUrl = Array.isArray(p.image) ? p.image[0] : (typeof p.image === 'string' ? p.image : p.image.url || p.image.contentUrl);
-                                        if (imgUrl) {
-                                            result.image = cleanUrl(imgUrl);
-                                            result.source = 'json-ld';
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (e) { }
-
-                        if (!result.image) {
-                            const imgSelectors = [
-                                '.product__gallery-item.swiper-slide-active img',
-                                '.product__gallery-item img',
-                                '.product-detail-carousel .slick-current img',
-                                '.product-detail-carousel .slick-slide:not(.slick-cloned) img',
-                                'img[data-src*="/products/"]',
-                                'picture img',
-                                'meta[property="og:image"]'
-                            ];
-
-                            for (let k = 0; k < imgSelectors.length; k++) {
-                                const el = document.querySelector(imgSelectors[k]) as HTMLImageElement;
-                                if (el) {
-                                    let src = el.src || el.getAttribute('data-src') || el.getAttribute('srcset') || el.getAttribute('content');
-                                    if (src) {
-                                        if (src.indexOf(',') !== -1) src = src.split(',')[0].trim().split(' ')[0];
-                                        if (src && src.indexOf('svg') === -1 && src.indexOf('icon') === -1 && src.indexOf('data:image') === -1) {
-                                            result.image = cleanUrl(src);
-                                            result.source = 'dom-selectors';
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!result.image) {
-                            const m = document.documentElement.innerHTML.match(/https:\/\/(sky-static\.mavi\.com|mavicdn\.akamaized\.net)\/products\/[^\x22\x27]+\.jpg/);
-                            if (m) {
-                                result.image = cleanUrl(m[0]);
-                                result.source = 'regex-scan';
-                            }
-                        }
-                    }
 
                     if (host.indexOf("oldcottoncargo.com.tr") !== -1 || host.indexOf("kufvintage.com") !== -1 || document.querySelector('.TicimaxRuntime')) {
                         // Ticimax / Old Cotton Cargo / Kuf Vintage Specifics
@@ -603,7 +750,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                             }
                         }
                     }
-                } catch (e) { console.error("Site specific error:", e); }
+                } catch (e) {
+                    console.error("Site specific error:", e);
+                }
 
                 if (!result.price) {
                     const sels = ['.price', '.product-price', '.amount', '[itemprop="price"]', '.SinglePrice_center__SWK1D'];

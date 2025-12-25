@@ -99,7 +99,7 @@ export default function Navbar() {
                             {isDropdownOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                     <div className="p-4 border-b border-border bg-muted/50">
-                                        <p className="text-sm font-bold text-foreground truncate">{user?.displayName || 'User'}</p>
+                                        <p className="text-sm font-bold text-foreground truncate">{user?.displayName || t('common.user')}</p>
                                         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                                     </div>
                                     <div className="p-2">

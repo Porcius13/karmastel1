@@ -24,6 +24,7 @@ import { LanguageToggle } from './LanguageToggle';
 import { NotificationDropdown } from './NotificationDropdown';
 import { NotificationService } from '@/lib/notification-service';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
 
 interface DashboardShellProps {
@@ -60,6 +61,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
+    const { t } = useLanguage();
 
     // Click Outside Listener
     React.useEffect(() => {
@@ -96,7 +98,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     const handleUrlSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && productUrl.trim()) {
             if (!user) {
-                alert("Please log in to add products.");
+                alert(t('dashboard.login_required_add'));
                 return;
             }
 
@@ -112,11 +114,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                     setProductUrl('');
                     // Optional: Show success toast
                 } else {
-                    alert(data.error || "Failed to add product");
+                    alert(data.error || t('dashboard.add_error'));
                 }
             } catch (err) {
                 console.error(err);
-                alert("An error occurred");
+                alert(t('common.error_occurred'));
             } finally {
                 setIsAdding(false);
             }
@@ -164,7 +166,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                         <button
                             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                             className="hidden md:flex p-2 text-muted-foreground hover:text-foreground hover:bg-surface rounded-lg transition-colors"
-                            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                            title={isSidebarCollapsed ? t('common.expand_sidebar') : t('common.collapse_sidebar')}
                         >
                             {isSidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
                         </button>
@@ -176,7 +178,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                         </div>
                         <input
                             type="text"
-                            placeholder="Search your items..."
+                            placeholder={t('dashboard.search_placeholder')}
                             onChange={(e) => onSearch && onSearch(e.target.value)}
                             className="w-full bg-surface-highlight/50 border-none rounded-full py-2.5 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm"
                         />
@@ -191,7 +193,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                         <div className='relative'>
                             <input
                                 type="text"
-                                placeholder="Paste a product link to track..."
+                                placeholder={t('dashboard.paste_link_track')}
                                 value={productUrl}
                                 onChange={(e) => setProductUrl(e.target.value)}
                                 onKeyDown={handleUrlSubmit}
@@ -261,7 +263,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                                             onClick={() => setIsDropdownOpen(false)}
                                         >
                                             <User size={16} />
-                                            Profile
+                                            {t('common.profile') || 'Profile'}
                                         </Link>
                                         <Link
                                             href="/settings/profile"
@@ -269,14 +271,14 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                                             onClick={() => setIsDropdownOpen(false)}
                                         >
                                             <Settings size={16} />
-                                            Settings
+                                            {t('common.settings')}
                                         </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
                                         >
                                             <LogOut size={16} />
-                                            Log Out
+                                            {t('common.logout')}
                                         </button>
                                     </div>
                                 </div>

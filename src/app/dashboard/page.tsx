@@ -6,12 +6,14 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, deleteDo
 import { DashboardShell } from '@/components/DashboardShell';
 import { SmartProductCard } from '@/components/SmartProductCard';
 import { PriceChart } from '@/components/PriceChart';
-import { LayoutGrid, ListFilter, Search, List } from 'lucide-react';
+import { LayoutGrid, ListFilter, Search, List as ListIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -171,23 +173,23 @@ export default function Home() {
 
   // Actions
   const handleDelete = async (product: any) => {
-    if (!confirm("Are you sure you want to delete this from your wishlist?")) return;
+    if (!confirm(t('dashboard.delete_confirm'))) return;
 
     if (product.userId && product.userId !== user?.uid) {
-      alert("Unauthorized action.");
+      alert(t('common.unauthorized'));
       return;
     }
 
     try {
       await deleteDoc(doc(db, "products", product.id));
     } catch (e) {
-      alert("Failed to delete item.");
+      alert(t('dashboard.delete_error'));
       console.error(e);
     }
   };
 
   const handleSetAlarm = async (product: any) => {
-    const email = prompt("Stok gelince haber verilecek E-posta adresini girin:");
+    const email = prompt(t('product.set_alarm_prompt'));
     if (!email) return;
 
     try {
@@ -201,14 +203,14 @@ export default function Home() {
           userId: user?.uid
         })
       });
-      alert("Alarm kuruldu! Ürün stoğa girince haber vereceğiz.");
+      alert(t('product.alarm_set_success'));
     } catch (e) {
-      alert("Bir hata oluştu.");
+      alert(t('common.error_occurred'));
     }
   };
 
   const handleAddCollection = () => {
-    const name = prompt("Enter new collection name:");
+    const name = prompt(t('profile.display_name_hint')); // reusing a placeholder or could use a new key
     if (name && !collections.includes(name)) {
       setCollections([...collections, name]);
       setActiveCollection(name);
@@ -227,10 +229,13 @@ export default function Home() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
           <h2 className="text-3xl font-black text-foreground tracking-tight">
-            {activeCollection ? activeCollection : 'All Items'}
+            {activeCollection ? activeCollection : t('common.all_items')}
           </h2>
           <p className="text-muted-foreground mt-1">
-            {activeCollection ? `Viewing items in ${activeCollection}` : 'Track prices and stock status in real-time.'}
+            {activeCollection
+              ? t('dashboard.view_items_in').replace('{collection}', activeCollection)
+              : t('dashboard.track_subtitle')
+            }
           </p>
         </div>
 
@@ -241,16 +246,16 @@ export default function Home() {
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              title="Grid View"
+              title={t('dashboard.grid_view')}
             >
               <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              title="List View"
+              title={t('dashboard.list_view')}
             >
-              <List size={18} />
+              <ListIcon size={18} />
             </button>
           </div>
 
@@ -258,7 +263,7 @@ export default function Home() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'all' && !activeSource ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            All
+            {t('common.all')}
           </button>
 
           {/* Source Filter */}
@@ -267,7 +272,7 @@ export default function Home() {
             onChange={(e) => setActiveSource(e.target.value || null)}
             className={`px-4 py-2 rounded-lg appearance-none cursor-pointer transition-colors font-medium border-none outline-none ${activeSource ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            <option value="" className="bg-surface text-foreground">All Stores</option>
+            <option value="" className="bg-surface text-foreground">{t('dashboard.all_stores')}</option>
             {sources.map(s => (
               <option key={s} value={s} className="bg-surface text-foreground">{s}</option>
             ))}
@@ -277,13 +282,13 @@ export default function Home() {
             onClick={() => setFilter('in_stock')}
             className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'in_stock' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            In Stock
+            {t('dashboard.in_stock')}
           </button>
           <button
             onClick={() => setFilter('price_drop')}
             className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${filter === 'price_drop' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surfaceHighlight'}`}
           >
-            Deals
+            {t('dashboard.deals')}
           </button>
 
           {/* Sort Dropdown */}
@@ -293,11 +298,11 @@ export default function Home() {
               onChange={(e) => setSortBy(e.target.value as any)}
               className="appearance-none bg-surface text-foreground pl-4 pr-10 py-2 rounded-lg hover:bg-surfaceHighlight focus:outline-none cursor-pointer font-medium min-w-[140px]"
             >
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="alpha_asc">Name: A-Z</option>
-              <option value="alpha_desc">Name: Z-A</option>
+              <option value="newest">{t('dashboard.sort.newest')}</option>
+              <option value="price_asc">{t('dashboard.sort.price_asc')}</option>
+              <option value="price_desc">{t('dashboard.sort.price_desc')}</option>
+              <option value="alpha_asc">{t('dashboard.sort.alpha_asc')}</option>
+              <option value="alpha_desc">{t('dashboard.sort.alpha_desc')}</option>
             </select>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
               <ListFilter size={16} />
@@ -317,19 +322,19 @@ export default function Home() {
             <Search size={32} />
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">
-            {searchQuery ? "No results found" : "No items found"}
+            {searchQuery ? t('dashboard.no_results') : t('dashboard.no_items')}
           </h3>
           <p className="text-muted-foreground max-w-sm mx-auto mb-6">
             {searchQuery
-              ? `We couldn't find any items matching "${searchQuery}".`
-              : "Your wishlist is empty. Start by adding a product link above."}
+              ? t('dashboard.no_results_desc').replace('{query}', searchQuery)
+              : t('dashboard.no_items_desc')}
           </p>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               className="text-primary hover:underline font-medium"
             >
-              Clear search
+              {t('dashboard.clear_search')}
             </button>
           )}
         </div>
