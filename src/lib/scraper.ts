@@ -302,84 +302,80 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 });
 
                 // Wait for dynamic elements and simulate human behavior
-                await new Promise(r => setTimeout(r, 3000));
-                await mPage.mouse.move(Math.random() * 500, Math.random() * 500);
-                await mPage.evaluate(() => window.scrollBy(0, 300));
-                await new Promise(r => setTimeout(r, 2000));
-
-                try {
-                    await mPage.waitForSelector('.product__title, h1, .product-price', { timeout: 10000 });
-                } catch (e) {
-                    console.warn("Mavi: Selector timeout, attempting extraction anyway.");
-                }
+                await new Promise(r => setTimeout(r, 4000));
+                await mPage.evaluate(() => window.scrollBy(0, 500));
+                await new Promise(r => setTimeout(r, 1500));
 
                 const result: any = await mPage.evaluate(() => {
                     const res = { title: "", price: 0, image: "", currency: "TRY", inStock: true, source: "dom-selectors-mavi" };
                     try {
-                        const h1 = document.querySelector('.product__title') ||
-                            document.querySelector('h1.product-title') ||
-                            document.querySelector('h1');
-                        if (h1) res.title = h1.textContent?.trim() || "";
+                        // Priority 1: JSON-LD (Most reliable for unformatted data)
+                        const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+                        for (const s of scripts) {
+                            try {
+                                const text = s.textContent || "";
+                                if (!text.includes('"Product"')) continue;
+                                const data = JSON.parse(text);
+                                const items = Array.isArray(data) ? data : [data];
+                                const p = items.find(i => i['@type'] === 'Product' || i.mainEntity?.['@type'] === 'Product');
+                                if (p) {
+                                    const prod = p.mainEntity || p;
+                                    res.title = prod.name || res.title;
+                                    const offer = Array.isArray(prod.offers) ? prod.offers[0] : (prod.offers?.itemOffered?.[0]?.offers?.[0] || prod.offers);
+                                    if (offer && offer.price) {
+                                        res.price = parseFloat(offer.price);
+                                        res.source = 'json-ld-mavi';
+                                    }
+                                    if (prod.image) {
+                                        const imgUrl = Array.isArray(prod.image) ? prod.image[0] : (prod.image.contentUrl || prod.image);
+                                        res.image = imgUrl;
+                                    }
+                                    if (offer.availability?.includes('OutOfStock')) {
+                                        res.inStock = false;
+                                    }
+                                }
+                            } catch (e) { }
+                        }
 
-                        // Multiple Price Selectors
-                        const priceSels = [
-                            '.product__price.-sale',
-                            '.product__price',
-                            '[data-price-value]',
-                            '.price',
-                            '.product-detail-info__price'
-                        ];
+                        // Priority 2: DOM Selectors (Fallback)
+                        if (!res.title) {
+                            const h1 = document.querySelector('.product__title') || document.querySelector('h1');
+                            if (h1) res.title = h1.textContent?.trim() || "";
+                        }
 
-                        let priceText = "";
-                        for (const sel of priceSels) {
-                            const el = document.querySelector(sel);
-                            if (el) {
-                                priceText = el.getAttribute('data-price-value') || el.textContent || "";
-                                if (priceText && /[0-9]/.test(priceText)) break;
+                        if (!res.price) {
+                            const priceSels = ['.product__price.-sale', '.product__price', '.product-detail-info__price'];
+                            for (const sel of priceSels) {
+                                const el = document.querySelector(sel);
+                                if (el) {
+                                    const val = el.getAttribute('data-price-value') || el.textContent || "";
+                                    if (val) {
+                                        let v = val.replace(/[^\d.,]/g, "").replace(",", ".");
+                                        res.price = parseFloat(v) || 0;
+                                        if (res.price > 0) break;
+                                    }
+                                }
                             }
                         }
 
-                        if (priceText) {
-                            let v = priceText.replace(/[^\d.,]/g, "").replace(",", ".");
-                            // Handle cases with multiple dots like 1.250.00
-                            const dots = v.split('.').length - 1;
-                            if (dots > 1) {
-                                const lastDotIdx = v.lastIndexOf('.');
-                                v = v.substring(0, lastDotIdx).replace(/\./g, '') + v.substring(lastDotIdx);
-                            }
-                            res.price = parseFloat(v) || 0;
+                        if (!res.image) {
+                            const img = document.querySelector('.product__gallery-item img') || document.querySelector('meta[name="og:image"]');
+                            if (img) res.image = (img as HTMLImageElement).src || img.getAttribute('content') || "";
                         }
-
-                        // Image Strategy
-                        const img = document.querySelector('.product__gallery-item img') ||
-                            document.querySelector('.js-gallery-item img') ||
-                            document.querySelector('.product-gallery__item.active img') ||
-                            document.querySelector('meta[name="og:image"]') ||
-                            document.querySelector('meta[property="og:image"]') ||
-                            document.querySelector('.product-detail-carousel img') ||
-                            document.querySelector('link[rel="preload"][as="image"]');
-
-                        if (img) {
-                            let src = (img as HTMLImageElement).currentSrc ||
-                                (img as HTMLImageElement).src ||
-                                img.getAttribute('content') ||
-                                img.getAttribute('href') || "";
-
-                            if (src && src.startsWith('//')) {
-                                src = 'https:' + src;
-                            }
-                            res.image = src;
-                        }
-
-                        // Check stock status
-                        const stockBtn = document.querySelector('.add-to-cart:disabled, .out-of-stock');
-                        if (stockBtn) res.inStock = false;
 
                     } catch (e) { }
                     return res;
                 });
 
                 if (result.title && !result.title.toLowerCase().includes("blocked") && !result.title.toLowerCase().includes("cloudflare")) {
+                    // Clean Mavi Image URL (Remove mnresize for high res)
+                    if (result.image && result.image.includes('/mnresize/')) {
+                        result.image = result.image.replace(/\/mnresize\/\d+\/\d+\//, '/');
+                    }
+                    if (result.image && result.image.startsWith('//')) {
+                        result.image = 'https:' + result.image;
+                    }
+
                     return {
                         ...result,
                         description: "",
@@ -681,14 +677,15 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                         const tEl = document.querySelector('#productTitle');
                         if (tEl) result.title = tEl.textContent?.trim() || "";
 
-                        // Amazon Price Selectors
+                        // Amazon Price Selectors - Prioritize actual current price
                         const pSelectors = [
+                            '.a-price.reinventPricePriceToPayMargin.priceToPay .a-offscreen',
                             '.a-price.apexPriceToPay .a-offscreen',
                             '#priceblock_ourprice',
                             '#priceblock_dealprice',
+                            '.priceToPay .a-offscreen',
                             '.a-price .a-offscreen',
-                            '#price_inside_buybox',
-                            '.priceToPay .a-offscreen'
+                            '#price_inside_buybox'
                         ];
                         for (const s of pSelectors) {
                             const pEl = document.querySelector(s);
@@ -709,10 +706,14 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                         for (const s of iSelectors) {
                             const iEl = document.querySelector(s) as HTMLImageElement;
                             if (iEl) {
-                                const src = iEl.getAttribute('data-old-hires') || iEl.getAttribute('data-a-dynamic-image') || iEl.src;
+                                let src = iEl.getAttribute('data-old-hires') || iEl.getAttribute('data-a-dynamic-image') || iEl.src;
+
+                                // Clean Amazon Image Size Params
                                 if (src && src.indexOf('data:') !== 0) {
+                                    // Remove parts like ._AC_SX679_ or ._SY..._ before file extension
+                                    src = src.replace(/\._AC_[A-Z0-9_]+\./, '.').replace(/\._SY[0-9_]+\./, '.').replace(/\._SX[0-9_]+\./, '.');
                                     result.image = cleanUrl(src);
-                                    result.source = 'dom-selectors';
+                                    result.source = 'dom-selectors-amazon';
                                     break;
                                 }
                             }
