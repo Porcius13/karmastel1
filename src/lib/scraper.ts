@@ -274,52 +274,112 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             try {
                 mBrowser = await getBrowser();
                 const mPage = await mBrowser.newPage();
-                // Desktop UA is often safer for big brands to avoid "Install App" walls
-                await mPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
-                await mPage.setViewport({ width: 1920, height: 1080 });
 
-                await mPage.goto(cleanUrlStr, { waitUntil: 'networkidle0', timeout: 30000 });
-                // Wait for dynamic content
-                await new Promise(r => setTimeout(r, 2500));
+                // Enhanced Stealth
+                await mPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+                await mPage.setViewport({ width: 1920, height: 1080 });
+                await mPage.setExtraHTTPHeaders({
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': 'https://www.google.com/',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"'
+                });
+
+                // Evade detection
+                await mPage.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    (window as any).chrome = { runtime: {} };
+                });
+
+                // Randomized delay before navigation
+                await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+
+                await mPage.goto(cleanUrlStr, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 45000
+                });
+
+                // Wait for dynamic elements and simulate human behavior
+                await new Promise(r => setTimeout(r, 3000));
+                await mPage.mouse.move(Math.random() * 500, Math.random() * 500);
+                await mPage.evaluate(() => window.scrollBy(0, 300));
+                await new Promise(r => setTimeout(r, 2000));
 
                 try {
-                    await mPage.waitForSelector('.product__title, .product-title, h1', { timeout: 5000 });
-                } catch (e) { }
+                    await mPage.waitForSelector('.product__title, h1, .product-price', { timeout: 10000 });
+                } catch (e) {
+                    console.warn("Mavi: Selector timeout, attempting extraction anyway.");
+                }
 
                 const result: any = await mPage.evaluate(() => {
-                    const res = { title: "", price: 0, image: "", currency: "TRY", inStock: true, source: "manual" };
+                    const res = { title: "", price: 0, image: "", currency: "TRY", inStock: true, source: "dom-selectors-mavi" };
                     try {
-                        const h1 = document.querySelector('.product__title') || document.querySelector('h1.product-title') || document.querySelector('h1');
+                        const h1 = document.querySelector('.product__title') ||
+                            document.querySelector('h1.product-title') ||
+                            document.querySelector('h1');
                         if (h1) res.title = h1.textContent?.trim() || "";
 
-                        // Price
-                        const pEl = document.querySelector('.product__price -sale') || document.querySelector('[data-price-value]') || document.querySelector('.price');
-                        if (pEl) {
-                            const val = pEl.getAttribute('data-price-value') || pEl.textContent || "";
-                            if (val) {
-                                let v = val.replace(/[^\d.,]/g, "").replace(",", ".");
-                                res.price = parseFloat(v) || 0;
+                        // Multiple Price Selectors
+                        const priceSels = [
+                            '.product__price.-sale',
+                            '.product__price',
+                            '[data-price-value]',
+                            '.price',
+                            '.product-detail-info__price'
+                        ];
+
+                        let priceText = "";
+                        for (const sel of priceSels) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                priceText = el.getAttribute('data-price-value') || el.textContent || "";
+                                if (priceText && /[0-9]/.test(priceText)) break;
                             }
                         }
 
-                        // Image
-                        const img = document.querySelector('.product__gallery-item.swiper-slide-active img') ||
-                            document.querySelector('.product-detail-carousel .slick-track img') ||
-                            document.querySelector('.product__gallery img') ||
-                            document.querySelector('meta[property="og:image"]') ||
+                        if (priceText) {
+                            let v = priceText.replace(/[^\d.,]/g, "").replace(",", ".");
+                            // Handle cases with multiple dots like 1.250.00
+                            const dots = v.split('.').length - 1;
+                            if (dots > 1) {
+                                const lastDotIdx = v.lastIndexOf('.');
+                                v = v.substring(0, lastDotIdx).replace(/\./g, '') + v.substring(lastDotIdx);
+                            }
+                            res.price = parseFloat(v) || 0;
+                        }
+
+                        // Image Strategy
+                        const img = document.querySelector('.product__gallery-item img') ||
+                            document.querySelector('.js-gallery-item img') ||
+                            document.querySelector('.product-gallery__item.active img') ||
                             document.querySelector('meta[name="og:image"]') ||
+                            document.querySelector('meta[property="og:image"]') ||
+                            document.querySelector('.product-detail-carousel img') ||
                             document.querySelector('link[rel="preload"][as="image"]');
 
                         if (img) {
-                            res.image = (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src || img.getAttribute('content') || img.getAttribute('href') || "";
+                            let src = (img as HTMLImageElement).currentSrc ||
+                                (img as HTMLImageElement).src ||
+                                img.getAttribute('content') ||
+                                img.getAttribute('href') || "";
+
+                            if (src && src.startsWith('//')) {
+                                src = 'https:' + src;
+                            }
+                            res.image = src;
                         }
 
-                        res.source = 'dom-selectors-isolated';
+                        // Check stock status
+                        const stockBtn = document.querySelector('.add-to-cart:disabled, .out-of-stock');
+                        if (stockBtn) res.inStock = false;
+
                     } catch (e) { }
                     return res;
                 });
 
-                if (result.title) {
+                if (result.title && result.title.toLowerCase().indexOf("blocked") === -1) {
                     return {
                         ...result,
                         description: "",
@@ -329,6 +389,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             } catch (e: any) {
                 console.warn("[Mavi Scraper Error]:", e.message);
+                if (e.message.includes("blocked")) {
+                    throw new Error("Mavi security block detected. Please try again later or add manually.");
+                }
             } finally {
                 if (mBrowser) await mBrowser.close();
             }
@@ -600,7 +663,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                         }
                     }
                     if (!result.image) {
-                        const imgm = (document.querySelector('meta[property="og:image"]') || document.querySelector('meta[name="twitter:image"]')) as HTMLMetaElement;
+                        const imgm = (document.querySelector('meta[property="og:image"]') ||
+                            document.querySelector('meta[name="og:image"]') ||
+                            document.querySelector('meta[name="twitter:image"]')) as HTMLMetaElement;
                         if (imgm) result.image = cleanUrl(imgm.getAttribute('content'));
                     }
                     if (!result.title) {
@@ -612,6 +677,48 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 // Site Specifics
                 try {
                     const host = window.location.hostname;
+                    if (host.indexOf("amazon.com.tr") !== -1 || host.indexOf("amazon.com") !== -1) {
+                        const tEl = document.querySelector('#productTitle');
+                        if (tEl) result.title = tEl.textContent?.trim() || "";
+
+                        // Amazon Price Selectors
+                        const pSelectors = [
+                            '.a-price.apexPriceToPay .a-offscreen',
+                            '#priceblock_ourprice',
+                            '#priceblock_dealprice',
+                            '.a-price .a-offscreen',
+                            '#price_inside_buybox',
+                            '.priceToPay .a-offscreen'
+                        ];
+                        for (const s of pSelectors) {
+                            const pEl = document.querySelector(s);
+                            if (pEl && pEl.textContent && /[0-9]/.test(pEl.textContent)) {
+                                result.price = safePrice(pEl.textContent);
+                                result.source = 'dom-selectors';
+                                break;
+                            }
+                        }
+
+                        // Amazon Image Selectors
+                        const iSelectors = [
+                            '#landingImage',
+                            '#imgBlkFront',
+                            '#main-image',
+                            '.a-dynamic-image'
+                        ];
+                        for (const s of iSelectors) {
+                            const iEl = document.querySelector(s) as HTMLImageElement;
+                            if (iEl) {
+                                const src = iEl.getAttribute('data-old-hires') || iEl.getAttribute('data-a-dynamic-image') || iEl.src;
+                                if (src && src.indexOf('data:') !== 0) {
+                                    result.image = cleanUrl(src);
+                                    result.source = 'dom-selectors';
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     if (host.indexOf("tagrean.com") !== -1) {
                         const tEl = document.querySelector('h1.product_title');
                         if (tEl) result.title = tEl.textContent?.trim() || "";
