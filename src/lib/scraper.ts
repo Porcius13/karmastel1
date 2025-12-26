@@ -379,7 +379,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                     return res;
                 });
 
-                if (result.title && result.title.toLowerCase().indexOf("blocked") === -1) {
+                if (result.title && !result.title.toLowerCase().includes("blocked") && !result.title.toLowerCase().includes("cloudflare")) {
                     return {
                         ...result,
                         description: "",
@@ -427,7 +427,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 await page.setExtraHTTPHeaders({
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'sec-ch-ua': isMobile ? '' : '"Not A(Brand";v="99", "Google Chrome";v="122", "Chromium";v="122"',
+                    'sec-ch-ua': isMobile ? '' : '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
                     'sec-ch-ua-mobile': isMobile ? '?1' : '?0',
                     'sec-ch-ua-platform': isMobile ? (userAgent.includes('iPhone') ? '"iOS"' : '"Android"') : '"Windows"',
                     'Upgrade-Insecure-Requests': '1',
@@ -897,13 +897,22 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             if (finalData.price === 0 || !finalData.image) {
                 const html = await page.content();
                 if (finalData.price === 0) {
-                    const pricePatterns = [/"price"\s*:\s*([\d.]+)/, /data-price="([\d.]+)"/];
+                    const pricePatterns = [
+                        /"price"\s*:\s*([\d.]+)/,
+                        /data-price="([\d.]+)"/,
+                        /"priceAmount"\s*:\s*([\d.]+)/,
+                        /"buyingPrice"\s*:\s*([\d.]+)/,
+                        /"price":\s*\{\s*"amount":\s*([\d.]+)/,
+                        /"colorPrice"\s*:\s*"([^"]+)"/
+                    ];
                     for (const p of pricePatterns) {
                         const m = html.match(p);
                         if (m && m[1]) {
                             finalData.price = smartPriceParse(m[1]);
-                            finalData.source = 'regex-scan';
-                            break;
+                            if (finalData.price > 0) {
+                                finalData.source = 'regex-scan' as any;
+                                break;
+                            }
                         }
                     }
                 }
