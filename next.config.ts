@@ -34,7 +34,7 @@ const nextConfig = {
   },
   // Explicitly externalize these packages for Vercel/Serverless environment
   serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
-};
+} as any; // Cast to any to avoid strict type checking on remotePatterns which is valid in runtime
 
 export default withSentryConfig(withPWA(nextConfig), {
   // For all available options, see:
