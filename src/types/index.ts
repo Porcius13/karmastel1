@@ -32,6 +32,6 @@ export interface ScrapedData {
     currency: string;
     description: string;
     inStock: boolean;
-    source: 'meta-tag' | 'json-ld' | 'dom-selectors' | 'regex-scan' | 'manual' | 'dom-selectors-isolated' | 'amazon-dom';
+    source: 'meta-tag' | 'json-ld' | 'dom-selectors' | 'regex-scan' | 'manual' | 'dom-selectors-isolated' | 'amazon-dom' | 'static-cheerio';
     error?: string;
 }

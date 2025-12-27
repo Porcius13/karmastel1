@@ -53,8 +53,8 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
         });
 
         // 2. Meta Tags Fallback
-        if (!result.title) result.title = $('meta[property="og:title"]').attr('content') || $('title').text();
-        if (!result.image) result.image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content');
+        if (!result.title) result.title = $('meta[property="og:title"]').attr('content') || $('title').text() || "";
+        if (!result.image) result.image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || "";
         if (result.price === 0) {
             const metaPrice = $('meta[property="product:price:amount"]').attr('content') ||
                 $('meta[itemprop="price"]').attr('content') ||
