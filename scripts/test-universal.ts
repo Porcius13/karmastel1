@@ -62,10 +62,11 @@ async function runTests() {
                 console.log(`   ❌ Reason: ${data.error || "Price not found"}`);
             }
 
-        } catch (error: any) {
+        } catch (e: any) {
             const duration = Date.now() - start;
             console.log(`${colors.red}❌ [FAIL]${colors.reset} in ${duration}ms`);
-            console.log(`   🐛 Error: ${error.message}`);
+            console.log(`   🐛 Error: ${e.message}`);
+            console.error("CRASH:", e.message);
         }
 
         console.log("-".repeat(50));

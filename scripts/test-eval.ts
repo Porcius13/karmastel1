@@ -11,7 +11,7 @@ async function run() {
             return myFunc();
         });
         console.log("RESULT:", res);
-    } catch (e) {
+    } catch (e: any) {
         console.error("ERROR:", e.message);
     }
     await browser.close();

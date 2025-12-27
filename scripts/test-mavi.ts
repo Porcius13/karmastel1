@@ -9,7 +9,7 @@ async function testMavi() {
         const data = await scrapeProduct(url);
         console.log("Scrape Result:", JSON.stringify(data, null, 2));
     } catch (e: any) {
-        console.error("Scrape Failed:", e.message);
+        console.error("CRASH:", e.message);
     }
 }
 
