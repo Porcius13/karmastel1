@@ -21,7 +21,7 @@ async function runTest() {
         } else {
             console.log("\n❌ TEST FAILED: Check currency or image cleaning.");
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("❌ CRASHED:", e.message);
     }
 }
