@@ -81,7 +81,7 @@ export const zaraScraper = async ({ page }: ScraperContext): Promise<ScrapedData
                 // @ts-ignore
                 if (window.zara) {
                     console.log("Found window.zara");
-                    console.log("Keys in window.zara:", JSON.stringify(Object.keys(window.zara)));
+                    console.log("Keys in window.zara:", JSON.stringify(Object.keys((window as any).zara)));
 
                     // @ts-ignore
                     const payload = window.zara.viewPayload || window.zara.appPayload;
@@ -179,7 +179,7 @@ export const zaraScraper = async ({ page }: ScraperContext): Promise<ScrapedData
                         }
                     }
                 }
-            } catch (e) { console.log("Grep error:", e.message) }
+            } catch (e: any) { console.log("Grep error:", e.message) }
 
             return result;
         });
