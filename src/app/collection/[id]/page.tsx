@@ -89,15 +89,16 @@ export default function PublicCollectionPage() {
 
                 // 3. Fetch Products
                 const productsRef = collection(db, "products");
-                const q = query(
+                const qP = query(
                     productsRef,
                     where("userId", "==", colInfo.userId),
-                    where("collection", "==", colInfo.name)
+                    where("collection", "==", colInfo.name),
+                    where("isPublic", "==", true)
                 );
-                const productSnaps = await getDocs(q);
-                const fetchedProducts = productSnaps.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
+                const results = await getDocs(qP);
+                const fetchedProducts = results.docs.map(d => ({
+                    id: d.id,
+                    ...(d.data() as any)
                 })) as Product[];
 
                 setProducts(fetchedProducts);
@@ -206,8 +207,8 @@ export default function PublicCollectionPage() {
                                 <button
                                     onClick={handleToggleLike}
                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all active:scale-95 ${socialState.isLiked
-                                            ? "bg-red-500/10 border-red-500/50 text-red-500"
-                                            : "bg-surface border-surfaceHighlight hover:bg-surfaceHighlight text-muted-foreground hover:text-white"
+                                        ? "bg-red-500/10 border-red-500/50 text-red-500"
+                                        : "bg-surface border-surfaceHighlight hover:bg-surfaceHighlight text-muted-foreground hover:text-white"
                                         }`}
                                 >
                                     <Heart size={18} className={socialState.isLiked ? "fill-current" : ""} />
@@ -217,8 +218,8 @@ export default function PublicCollectionPage() {
                                 <button
                                     onClick={handleToggleSave}
                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all active:scale-95 ${socialState.isSaved
-                                            ? "bg-primary/10 border-primary/50 text-primary"
-                                            : "bg-surface border-surfaceHighlight hover:bg-surfaceHighlight text-muted-foreground hover:text-white"
+                                        ? "bg-primary/10 border-primary/50 text-primary"
+                                        : "bg-surface border-surfaceHighlight hover:bg-surfaceHighlight text-muted-foreground hover:text-white"
                                         }`}
                                 >
                                     <Bookmark size={18} className={socialState.isSaved ? "fill-current" : ""} />

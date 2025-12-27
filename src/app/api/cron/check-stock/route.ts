@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion, getDoc, addDoc } from "firebase/firestore";
 import { scrapeProduct } from "@/lib/scraper";
 import * as Sentry from "@sentry/nextjs";
 
@@ -80,17 +80,37 @@ export async function GET() {
                             lastStockCheck: serverTimestamp()
                         };
 
+                        // TRACK HIGHEST PRICE & DROP PERCENTAGE
+                        const currentHighest = productData.highestPrice || currentPrice;
+                        if (newPrice > currentHighest) {
+                            updates.highestPrice = newPrice;
+                            updates.priceDropPercentage = 0;
+                        } else if (newPrice < currentHighest && newPrice > 0) {
+                            updates.highestPrice = currentHighest;
+                            const dropRatio = (currentHighest - newPrice) / currentHighest;
+                            updates.priceDropPercentage = Math.round(dropRatio * 100);
+                        } else {
+                            updates.priceDropPercentage = productData.priceDropPercentage || 0;
+                        }
+
                         // CONDITIONAL HISTORY UPDATE
                         // Only add to history if price changed OR history is empty
-                        // This prevents bloating the array with identical consecutive prices
                         if (currentPrice !== newPrice) {
-                            updates.priceHistory = arrayUnion({
-                                date: new Date().toISOString(),
-                                price: newPrice
-                            });
+                            try {
+                                const historyRef = collection(db, "products", productId, "priceHistory");
+                                await addDoc(historyRef, {
+                                    price: newPrice,
+                                    date: new Date().toISOString(),
+                                    currency: productData.currency || 'TRY'
+                                });
+                                console.log(`Cron: Saved price update for ${productId} to subcollection`);
+                            } catch (histErr) {
+                                console.error(`Cron: Failed to save history for ${productId}:`, histErr);
+                            }
                         }
 
                         batch.update(productRef, updates);
+                        console.log(`Cron: Updated ${productId} - New Price: ${newPrice}, Drop: ${updates.priceDropPercentage}%`);
 
                     } catch (readError) {
                         console.error(`Error reading product ${productId}:`, readError);

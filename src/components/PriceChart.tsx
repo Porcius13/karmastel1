@@ -1,6 +1,8 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 interface PriceHistoryItem {
     date: string;
@@ -8,14 +10,46 @@ interface PriceHistoryItem {
 }
 
 interface PriceChartProps {
-    history?: PriceHistoryItem[];
+    productId?: string;
+    history?: PriceHistoryItem[]; // Legacy history from main doc
     currentPrice?: number;
 }
 
-export const PriceChart: React.FC<PriceChartProps> = ({ history = [], currentPrice = 0 }) => {
+export const PriceChart: React.FC<PriceChartProps> = ({ productId, history = [], currentPrice = 0 }) => {
+    const [subcollectionData, setSubcollectionData] = useState<PriceHistoryItem[]>([]);
+
+    // Fetch from subcollection if productId is provided
+    useEffect(() => {
+        if (!productId) return;
+
+        const q = query(
+            collection(db, "products", productId, "priceHistory"),
+            orderBy("date", "asc")
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({
+                date: doc.data().date,
+                price: doc.data().price
+            }));
+            setSubcollectionData(data);
+        }, (err) => {
+            console.error("PriceChart Listener Error (Subcollection):", err);
+        });
+
+        return () => unsubscribe();
+    }, [productId]);
+
     // 1. Prepare Data (Real or Dummy)
+    // Merge legacy history with subcollection data
+    const mergedHistory = [...history, ...subcollectionData];
+
+    // De-duplicate by date (just in case) and sort
+    const uniqueHistory = Array.from(new Map(mergedHistory.map(item => [item.date, item])).values());
+    uniqueHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
     let displayData = [];
-    const isDummy = !history || history.length < 2;
+    const isDummy = uniqueHistory.length < 2;
 
     if (isDummy) {
         // Generate Dummy Data (Last 7 Days)
@@ -23,8 +57,6 @@ export const PriceChart: React.FC<PriceChartProps> = ({ history = [], currentPri
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-
-            // Random price within 10% variance
             const variance = basePrice * 0.1;
             const randomPrice = basePrice + (Math.random() * variance * 2 - variance);
 
@@ -36,12 +68,10 @@ export const PriceChart: React.FC<PriceChartProps> = ({ history = [], currentPri
         }
     } else {
         // Format Real Data
-        displayData = history.map(item => ({
+        displayData = uniqueHistory.map(item => ({
             ...item,
             displayDate: new Date(item.date).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' })
         }));
-        // Sort by date just in case
-        displayData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
 
     // Custom Tooltip

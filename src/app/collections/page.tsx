@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, or } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { DashboardShell } from '@/components/DashboardShell';
@@ -25,57 +25,71 @@ export default function CollectionsPage() {
 
     // Fetch Products (Counts & Fallback Images)
     useEffect(() => {
-        if (!user) return;
+        if (!user?.uid) return;
 
-        const q = query(
-            collection(db, "products"),
-            where("userId", "==", user.uid)
-        );
+        let productsA: any[] = [];
+        let productsB: any[] = [];
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const updateState = () => {
+            const allProducts = [...productsA, ...productsB];
+            const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
+
             const counts: Record<string, number> = {};
             const firstImages: Record<string, string> = {};
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.collection) {
-                    counts[data.collection] = (counts[data.collection] || 0) + 1;
-                    // Capture first image found for this collection as fallback
-                    if (data.image && !firstImages[data.collection]) {
-                        firstImages[data.collection] = data.image;
-                    }
-                } else {
-                    counts['Uncategorized'] = (counts['Uncategorized'] || 0) + 1;
+            uniqueProducts.forEach((p) => {
+                const colName = p.collection || 'Uncategorized';
+                counts[colName] = (counts[colName] || 0) + 1;
+                if (p.image && !firstImages[colName]) {
+                    firstImages[colName] = p.image;
                 }
             });
             setCollectionsMap(counts);
             setCollectionFirstImages(firstImages);
+        };
+
+        const q1 = query(collection(db, "products"), where("userId", "==", user.uid));
+        const unsub1 = onSnapshot(q1, (snap) => {
+            productsA = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Collections Products (Owner) Error:", err);
+            setLoading(false);
         });
 
-        return () => unsubscribe();
+        const q2 = query(collection(db, "products"), where("participants", "array-contains", user.uid));
+        const unsub2 = onSnapshot(q2, (snap) => {
+            productsB = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Collections Products (Participant) Error:", err);
+            setLoading(false);
+        });
+
+        return () => { unsub1(); unsub2(); };
     }, [user]);
 
-    // Fetch Privacy Settings (Also serves as Source of Truth for Collections list)
+    // Fetch Privacy Settings
     useEffect(() => {
-        if (!user) return;
+        if (!user?.uid) return;
 
-        const q = query(
-            collection(db, "collection_settings"),
-            where("userId", "==", user.uid)
-        );
+        let settingsA: any[] = [];
+        let settingsB: any[] = [];
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const updateState = () => {
+            const allSettings = [...settingsA, ...settingsB];
+            const uniqueSettings = Array.from(new Map(allSettings.map(s => [s.id, s])).values());
+
             const settings: Record<string, boolean> = {};
             const images: Record<string, string> = {};
             const names = new Set<string>();
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.name) {
-                    names.add(data.name);
-                    settings[data.name] = data.isPublic || false;
-                    if (data.image || data.coverImage) {
-                        images[data.name] = data.image || data.coverImage;
+            uniqueSettings.forEach((s) => {
+                if (s.name) {
+                    names.add(s.name);
+                    settings[s.name] = s.isPublic || false;
+                    if (s.image || s.coverImage) {
+                        images[s.name] = s.image || s.coverImage;
                     }
                 }
             });
@@ -83,9 +97,27 @@ export default function CollectionsPage() {
             setCollectionImages(images);
             setAvailableCollectionNames(names);
             setLoading(false);
+        };
+
+        const q1 = query(collection(db, "collection_settings"), where("userId", "==", user.uid));
+        const unsub1 = onSnapshot(q1, (snap) => {
+            settingsA = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Collections Settings (Owner) Error:", err);
+            setLoading(false);
         });
 
-        return () => unsubscribe();
+        const q2 = query(collection(db, "collection_settings"), where("participants", "array-contains", user.uid));
+        const unsub2 = onSnapshot(q2, (snap) => {
+            settingsB = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Collections Settings (Participant) Error:", err);
+            setLoading(false);
+        });
+
+        return () => { unsub1(); unsub2(); };
     }, [user]);
 
     // ... handlers (handleTogglePrivacy, handleUpdateImage, handleDeleteCollection) remain the same...
@@ -94,7 +126,7 @@ export default function CollectionsPage() {
         e.preventDefault();
         e.stopPropagation();
 
-        if (!user) return;
+        if (!user?.uid) return;
 
         const currentStatus = privacySettings[collectionName] || false;
         const newStatus = !currentStatus;
@@ -114,6 +146,20 @@ export default function CollectionsPage() {
                 isPublic: newStatus,
                 updatedAt: new Date()
             }, { merge: true });
+
+            // Sync to all products in this collection
+            const productsRef = collection(db, "products");
+            const q = query(
+                productsRef,
+                where("userId", "==", user.uid),
+                where("collection", "==", collectionName)
+            );
+            const snapshot = await getDocs(q);
+            const batch = writeBatch(db);
+            snapshot.docs.forEach((doc) => {
+                batch.update(doc.ref, { isPublic: newStatus });
+            });
+            await batch.commit();
 
             console.log(`Privacy for ${collectionName} set to ${newStatus}`);
         } catch (err) {

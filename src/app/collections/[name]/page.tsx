@@ -24,52 +24,57 @@ export default function CollectionDetailsPage() {
     useEffect(() => {
         if (!user || !collectionName) return;
 
-        // Fetch user products filtered by collection
-        const q = query(
-            collection(db, "products"),
-            where("userId", "==", user.uid),
-            where("collection", "==", collectionName)
-        );
+        let productsA: any[] = [];
+        let productsB: any[] = [];
+        let collectionsA: string[] = [];
+        let collectionsB: string[] = [];
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items: any[] = [];
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                items.push({
-                    id: doc.id,
-                    ...data,
-                    inStock: data.inStock !== false,
-                });
-            });
+        const updateState = () => {
+            const allProducts = [...productsA, ...productsB];
+            const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
 
-            // Sort by newest
-            items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            // Filter by collection name
+            const filteredProducts = uniqueProducts.filter(p => p.collection === collectionName);
+            filteredProducts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            setProducts(filteredProducts);
 
-            setProducts(items);
+            // Also update allCollections list from the separate listeners
+            const allColNames = Array.from(new Set([...collectionsA, ...collectionsB, ...uniqueProducts.map(p => p.collection).filter(Boolean)])).sort();
+            setAllCollections(allColNames);
+
             setLoading(false);
-        });
+        };
 
-        // Also fetch ALL collections for the sidebar (separate listener or derived?) 
-        // Ideally sidebar fetches its own, but we usually pass it down. 
-        // For efficiency, let's just make a separate query for all user items to get collection names? 
-        // Or simpler: just let DashboardShell behave without specific collections or pass empty/mock? 
-        // Sidebar usually needs real collections to navigate. 
-        // Let's do a quick fetch of all items to derive collection list implies reading EVERYTHING just for the list. 
-        // Maybe we accept that sidebar might just have default or we do the heavy lift. 
-        // Let's replicate the logic from FavoritesPage which derived it.
-        const qAll = query(collection(db, "products"), where("userId", "==", user.uid));
-        const unsubAll = onSnapshot(qAll, (snap) => {
-            const found = new Set<string>();
-            snap.forEach(d => {
-                const dData = d.data();
-                if (dData.collection) found.add(dData.collection);
-            });
-            setAllCollections(Array.from(found));
-        });
+        // 1. Products (Owner)
+        const qP1 = query(collection(db, "products"), where("userId", "==", user.uid));
+        const unsubP1 = onSnapshot(qP1, (snap) => {
+            productsA = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), inStock: doc.data().inStock !== false }));
+            updateState();
+        }, (err) => console.error("Collection Page Products (Owner) Error:", err));
+
+        // 2. Products (Participant)
+        const qP2 = query(collection(db, "products"), where("participants", "array-contains", user.uid));
+        const unsubP2 = onSnapshot(qP2, (snap) => {
+            productsB = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), inStock: doc.data().inStock !== false }));
+            updateState();
+        }, (err) => console.error("Collection Page Products (Participant) Error:", err));
+
+        // 3. Collections (Owner)
+        const qC1 = query(collection(db, "collection_settings"), where("userId", "==", user.uid));
+        const unsubC1 = onSnapshot(qC1, (snap) => {
+            collectionsA = snap.docs.map(doc => doc.data().name).filter(Boolean);
+            updateState();
+        }, (err) => console.error("Collection Page Settings (Owner) Error:", err));
+
+        // 4. Collections (Participant)
+        const qC2 = query(collection(db, "collection_settings"), where("participants", "array-contains", user.uid));
+        const unsubC2 = onSnapshot(qC2, (snap) => {
+            collectionsB = snap.docs.map(doc => doc.data().name).filter(Boolean);
+            updateState();
+        }, (err) => console.error("Collection Page Settings (Participant) Error:", err));
 
         return () => {
-            unsubscribe();
-            unsubAll();
+            unsubP1(); unsubP2(); unsubC1(); unsubC2();
         };
     }, [user, collectionName]);
 

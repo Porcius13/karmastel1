@@ -96,7 +96,8 @@ export const chatService = {
     },
 
     // Listen for chats (Inbox)
-    subscribeToChats: (userId: string, callback: (chats: Chat[]) => void) => {
+    subscribeToChats: (userId: string, callback: (chats: Chat[]) => void, onError?: (err: any) => void) => {
+        if (!userId) return () => { };
         const q = query(
             collection(db, "chats"),
             where("participants", "array-contains", userId),
@@ -108,6 +109,7 @@ export const chatService = {
             callback(chats);
         }, (error) => {
             console.error("Chat subscription error:", error);
+            if (onError) onError(error);
         });
     },
 

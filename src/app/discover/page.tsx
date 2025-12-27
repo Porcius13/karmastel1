@@ -5,7 +5,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { useEffect, useState } from "react";
 import { DiscoverService, PublicUser, PublicCollection } from '@/lib/discover-service';
 import { UserService, UserProfile } from '@/lib/user-service';
-import { Compass, Search, User, Users } from 'lucide-react';
+import { Compass, Search, User, Users, TrendingDown, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from "@/context/AuthContext";
 
@@ -17,6 +17,7 @@ export default function DiscoverPage() {
     const [featuredUsers, setFeaturedUsers] = useState<PublicUser[]>([]);
     const [publicCollections, setPublicCollections] = useState<PublicCollection[]>([]);
     const [followedCollections, setFollowedCollections] = useState<PublicCollection[]>([]);
+    const [globalDeals, setGlobalDeals] = useState<any[]>([]);
 
     // Loading States
     const [loading, setLoading] = useState(true);
@@ -32,10 +33,14 @@ export default function DiscoverPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const users = await DiscoverService.getFeaturedUsers();
+                const [users, collections, deals] = await Promise.all([
+                    DiscoverService.getFeaturedUsers(),
+                    DiscoverService.getPublicCollections(),
+                    DiscoverService.getGlobalPriceDrops()
+                ]);
                 setFeaturedUsers(users);
-                const collections = await DiscoverService.getPublicCollections();
                 setPublicCollections(collections);
+                setGlobalDeals(deals);
             } catch (error) {
                 console.error("Error fetching discover data:", error);
             } finally {
@@ -126,6 +131,49 @@ export default function DiscoverPage() {
         </div>
     );
 
+    const renderDeals = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-24 bg-surface-secondary animate-pulse rounded-2xl" />
+                ))
+            ) : globalDeals.length > 0 ? (
+                globalDeals.map((product) => (
+                    <Link href={`/product/${product.id}`} key={product.id}>
+                        <div className="bg-surface border border-surfaceHighlight rounded-2xl p-4 flex gap-4 hover:border-primary/50 transition-all group relative overflow-hidden">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-secondary flex-shrink-0">
+                                <Image
+                                    src={product.image}
+                                    alt={product.title}
+                                    width={80}
+                                    height={80}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                    unoptimized
+                                />
+                            </div>
+                            <div className="flex flex-col justify-center flex-1 min-w-0">
+                                <h4 className="font-bold text-foreground text-sm truncate mb-1">{product.title}</h4>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-primary font-black">
+                                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: product.currency || 'TRY' }).format(product.price)}
+                                    </span>
+                                    <div className="flex items-center text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">
+                                        <TrendingDown size={10} className="mr-0.5" />
+                                        %{product.priceDropPercentage}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
+                ))
+            ) : (
+                <div className="col-span-full py-8 text-center text-muted-foreground bg-surface rounded-2xl border border-dashed border-border">
+                    No significant price drops tracked yet.
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <DashboardShell>
             <div className="layout-content-container flex flex-col max-w-[1200px] mx-auto w-full gap-8 pb-12">
@@ -193,8 +241,8 @@ export default function DiscoverPage() {
                         <button
                             onClick={() => setActiveTab('featured')}
                             className={`px-8 py-3 text-lg font-bold border-b-4 transition-all ${activeTab === 'featured'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             Featured
@@ -202,8 +250,8 @@ export default function DiscoverPage() {
                         <button
                             onClick={() => setActiveTab('following')}
                             className={`px-8 py-3 text-lg font-bold border-b-4 transition-all flex items-center gap-2 ${activeTab === 'following'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             Following
@@ -211,37 +259,42 @@ export default function DiscoverPage() {
                     </div>
                 )}
 
-                {/* Search Results (Conditional) */}
-                {searchQuery && searchResults.length > 0 ? (
+                {/* Main Content Areas */}
+                {searchQuery ? (
+                    /* Search Results */
                     <div className="mb-12">
                         <h2 className="text-2xl font-bold text-foreground mb-6">Search Results</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            {searchResults.map((user) => (
-                                <Link href={`/user/${user.uid}`} key={user.uid} className="flex items-center gap-4 p-4 bg-surface border border-surfaceHighlight rounded-2xl hover:border-primary/50 transition-all group">
-                                    <div className="w-12 h-12 rounded-full bg-surface-secondary overflow-hidden flex-shrink-0">
-                                        {user.photoURL ? (
-                                            <Image src={user.photoURL} alt={user.username || 'User'} width={48} height={48} className="w-full h-full object-cover" unoptimized />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                                <User size={20} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{user.displayName}</h3>
-                                        <p className="text-sm text-muted-foreground">@{user.username || 'user'}</p>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                        {searchResults.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                {searchResults.map((user) => (
+                                    <Link href={`/user/${user.uid}`} key={user.uid} className="flex items-center gap-4 p-4 bg-surface border border-surfaceHighlight rounded-2xl hover:border-primary/50 transition-all group">
+                                        <div className="w-12 h-12 rounded-full bg-surface-secondary overflow-hidden flex-shrink-0">
+                                            {user.photoURL ? (
+                                                <Image src={user.photoURL} alt={user.username || 'User'} width={48} height={48} className="w-full h-full object-cover" unoptimized />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                                    <User size={20} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{user.displayName}</h3>
+                                            <p className="text-sm text-muted-foreground">@{user.username || 'user'}</p>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-12">No users found matching "{searchQuery}"</p>
+                        )}
                     </div>
-                ) : !searchQuery && (
+                ) : (
+                    /* Normal Feed (Featured or Following) */
                     <>
-                        {/* Tab Content */}
                         {activeTab === 'featured' ? (
-                            <>
+                            <div className="flex flex-col gap-12">
                                 {/* Featured Curators */}
-                                <section className="mb-12">
+                                <section>
                                     <h2 className="text-2xl font-bold text-foreground mb-4">Featured Curators</h2>
                                     <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                                         {loading ? (
@@ -278,10 +331,25 @@ export default function DiscoverPage() {
 
                                 {/* Trending Collections Grid */}
                                 <section>
-                                    <h2 className="text-2xl font-bold text-foreground mb-4">Trending Collections</h2>
+                                    <h2 className="text-2xl font-bold text-foreground mb-6">Trending Collections</h2>
                                     {renderCollectionGrid(publicCollections, loading, "No public collections found yet.")}
                                 </section>
-                            </>
+
+                                {/* Global Best Deals */}
+                                <section>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-foreground">Global Best Deals</h2>
+                                        <div className="flex items-center gap-2">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                                            </span>
+                                            <span className="text-secondary text-xs font-bold uppercase tracking-widest">Live</span>
+                                        </div>
+                                    </div>
+                                    {renderDeals()}
+                                </section>
+                            </div>
                         ) : (
                             /* Following Tab Content */
                             <section>

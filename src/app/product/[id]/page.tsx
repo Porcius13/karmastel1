@@ -59,12 +59,28 @@ export default function ProductDetailPage() {
     // Fetch Collections
     useEffect(() => {
         if (!user) return;
-        const q = query(collection(db, "collection_settings"), where("userId", "==", user.uid));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const cols = snapshot.docs.map(doc => doc.data().name);
-            setCollections(cols);
-        });
-        return () => unsubscribe();
+
+        let colsA: string[] = [];
+        let colsB: string[] = [];
+
+        const updateState = () => {
+            const allCols = Array.from(new Set([...colsA, ...colsB])).sort();
+            setCollections(allCols);
+        };
+
+        const q1 = query(collection(db, "collection_settings"), where("userId", "==", user.uid));
+        const unsub1 = onSnapshot(q1, (snap) => {
+            colsA = snap.docs.map(doc => doc.data().name);
+            updateState();
+        }, (err) => console.error("Product Detail Collections (Owner) Error:", err));
+
+        const q2 = query(collection(db, "collection_settings"), where("participants", "array-contains", user.uid));
+        const unsub2 = onSnapshot(q2, (snap) => {
+            colsB = snap.docs.map(doc => doc.data().name);
+            updateState();
+        }, (err) => console.error("Product Detail Collections (Participant) Error:", err));
+
+        return () => { unsub1(); unsub2(); };
     }, [user]);
 
     const handleSaveNote = async () => {
@@ -323,6 +339,7 @@ export default function ProductDetailPage() {
 
                             {/* Reusing existing PriceChart component */}
                             <PriceChart
+                                productId={product.id}
                                 history={product.priceHistory || []}
                                 currentPrice={typeof product.price === 'number' ? product.price : parseFloat(product.price)}
                             />

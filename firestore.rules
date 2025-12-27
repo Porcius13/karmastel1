@@ -3,101 +3,115 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // USERS:
-    // - Public Read (for "Featured Curators" and profile pages)
-    // - Write Only by Owner (creating/updating profile)
+    // - Authenticated Read (for "Featured Curators" and profile pages)
+    // - Write Only by Owner
     match /users/{userId} {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
 
-      // FOLLOWERS Subcollection:
-      // Path: /users/{targetUserId}/followers/{followerUserId}
       match /followers/{followerId} {
-        allow read: if true;
+        allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == followerId;
       }
 
-      // FOLLOWING Subcollection:
-      // Path: /users/{currentUserId}/following/{targetUserId}
       match /following/{targetId} {
-        allow read: if true;
+        allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // NOTIFICATIONS Subcollection:
-      // Path: /users/{userId}/notifications/{notificationId}
       match /notifications/{notificationId} {
-        // Owner can read, update (mark as read), delete
         allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-        // Anyone (authenticated) can create a notification for this user (e.g. "User A followed you")
         allow create: if request.auth != null;
       }
 
-      // SAVED COLLECTIONS Subcollection:
-      // Path: /users/{userId}/saved_collections/{docId}
       match /saved_collections/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // COLLECTION SETTINGS:
-    // - Read: Allow if public OR if owner
-    // - Write: Only by Owner
-    match /collection_settings/{docId} {
-      // Allow list queries if they filter by isPublic==true is implicit in secure queries,
-      // but 'allow read' covers get & list.
-      // We allow list simply if true to enable the query, relying on the filter.
-      allow read: if resource.data.isPublic == true || (request.auth != null && resource.data.userId == request.auth.uid);
-      
-      // Explicit write permissions
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    // Helper: checks if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-      // LIKES Subcollection:
-      // Path: collection_settings/{collectionId}/likes/{userId}
+    // Common read logic for collections and products
+    // Common read logic for collections and products
+    function canAccessData(data) {
+      return data.get('isPublic', false) == true || 
+             (isAuthenticated() && (
+               data.get('userId', '') == request.auth.uid || 
+               request.auth.uid in data.get('participants', [])
+             ));
+    }
+
+    // COLLECTION SETTINGS:
+    match /collection_settings/{docId} {
+      allow read: if canAccessData(resource.data);
+      allow create: if isAuthenticated() && request.resource.data.get('userId', '') == request.auth.uid;
+      allow update: if isAuthenticated() && (
+                      resource.data.get('userId', '') == request.auth.uid || 
+                      request.auth.uid in resource.data.get('participants', [])
+                    );
+      allow delete: if isAuthenticated() && resource.data.get('userId', '') == request.auth.uid;
+
       match /likes/{userId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && request.auth.uid == userId;
       }
     }
 
     // PRODUCTS:
-    // - Read: Public
-    // - Write: Only by Owner
     match /products/{productId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if canAccessData(resource.data);
+      allow create: if isAuthenticated() && request.resource.data.get('userId', '') == request.auth.uid;
+      allow update: if isAuthenticated() && (
+                      resource.data.get('userId', '') == request.auth.uid || 
+                      request.auth.uid in resource.data.get('participants', [])
+                    );
+      allow delete: if isAuthenticated() && resource.data.get('userId', '') == request.auth.uid;
+
+      // Price History Subcollection
+      match /priceHistory/{historyId} {
+        allow read: if canAccessData(get(/databases/$(database)/documents/products/$(productId)).data);
+        allow write: if isAuthenticated() && (
+                        get(/databases/$(database)/documents/products/$(productId)).data.get('userId', '') == request.auth.uid || 
+                        request.auth.uid in get(/databases/$(database)/documents/products/$(productId)).data.get('participants', [])
+                      );
+      }
     }
 
     // FAILED PRODUCTS:
     match /failed_products/{productId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || request.resource.data.get('userId', '') == request.auth.uid);
     }
 
     // CHATS & MESSAGES:
     match /chats/{chatId} {
-      // DEBUG: Temporarily allowing all authenticated users to read/list chats
-      allow read: if request.auth != null;
+      // Allow reading if user is a participant
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.get('participants', []);
       
-      // Allow create if user is a participant
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
-      
-      // Allow update if user is a participant
-      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      // Allow updating if user is a participant (e.g. read receipts, last message)
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.get('participants', []);
+                   
+      allow create: if isAuthenticated() && 
+                       request.resource.data.get('participants', []) is list &&
+                       request.auth.uid in request.resource.data.get('participants', []);
 
       match /messages/{messageId} {
-        // DEBUG: Temporarily allowing all authenticated users to read messages
-        allow read: if request.auth != null;
+        // Only chat participants can read or send messages
+        allow read: if isAuthenticated() && 
+                       request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.get('participants', []);
         
-        // Anyone authenticated can create a message if they are the sender
-        allow create: if request.auth != null && 
-                      request.auth.uid == request.resource.data.senderId;
+        allow create: if isAuthenticated() && 
+                         request.auth.uid == request.resource.data.senderId &&
+                         request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.get('participants', []);
       }
+    }
+
+    // COLLECTION GROUP: LIKES
+    match /{path=**}/likes/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
   }
 }

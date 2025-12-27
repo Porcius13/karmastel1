@@ -43,6 +43,24 @@
             ]
         },
         {
+            "collectionGroup": "products",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isPublic",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "priceDropPercentage",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "chats",
             "queryScope": "COLLECTION",
             "fields": [
@@ -52,6 +70,20 @@
                 },
                 {
                     "fieldPath": "lastTimestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "likes",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
                     "order": "DESCENDING"
                 }
             ]

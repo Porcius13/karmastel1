@@ -181,7 +181,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {/* Edit Button */}
                 <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass}`)}
+                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-primary-foreground ${animClass}`)}
                     title={t('product.edit')}
                 >
                     <Pencil size={18} />
@@ -192,7 +192,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         href={product.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-75`)}
+                        className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-primary-foreground ${animClass} delay-75`)}
                         title={t('product.go_to_store')}
                     >
                         <ExternalLink size={20} />
@@ -210,7 +210,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                 {/* Analysis/Chart Button */}
                 <button
                     onClick={onOpenChart}
-                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-black ${animClass} delay-100`)}
+                    className={btnClass(`bg-surface text-foreground hover:bg-primary hover:text-primary-foreground ${animClass} delay-100`)}
                     title={t('product.price_analysis')}
                 >
                     <TrendingDown size={20} />

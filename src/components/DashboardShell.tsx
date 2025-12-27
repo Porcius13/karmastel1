@@ -81,7 +81,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
     // Listen for notification count
     React.useEffect(() => {
-        if (!user) return;
+        if (!user?.uid) return;
 
         const unsubscribe = NotificationService.subscribeToNotifications(user.uid, (notifs) => {
             setUnreadNotifCount(notifs.filter(n => !n.isRead).length);
@@ -258,9 +258,12 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                                 <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
                                     <div className="p-2">
                                         <Link
-                                            href={`/user/${user?.uid}`}
-                                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/50 transition-colors"
-                                            onClick={() => setIsDropdownOpen(false)}
+                                            href={user?.uid ? `/user/${user.uid}` : '#'}
+                                            className={`flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/50 transition-colors ${!user?.uid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            onClick={(e) => {
+                                                if (!user?.uid) e.preventDefault();
+                                                setIsDropdownOpen(false);
+                                            }}
                                         >
                                             <User size={16} />
                                             {t('common.profile') || 'Profile'}

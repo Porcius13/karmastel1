@@ -63,6 +63,8 @@ export const NotificationService = {
                 ...doc.data()
             })) as Notification[];
             callback(notifications);
+        }, (error) => {
+            console.error("Notification subscription error:", error);
         });
     },
 

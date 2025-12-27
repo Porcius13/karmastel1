@@ -1,8 +1,9 @@
 "use client";
 
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, where } from "firebase/firestore";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Product {
     id: string;
@@ -17,18 +18,29 @@ interface Product {
 }
 
 export default function ProductList() {
+    const { user } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+        if (!user) return;
+
+        const q = query(
+            collection(db, "products"),
+            where("userId", "==", user.uid),
+            orderBy("createdAt", "desc")
+        );
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
             setProducts(items);
             setLoading(false);
+        }, (err) => {
+            console.error("ProductList Listener Error:", err);
+            setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [user]);
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault(); // Prevent link click
@@ -117,4 +129,3 @@ export default function ProductList() {
         </div>
     );
 }
-

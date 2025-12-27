@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, deleteDoc, doc, or } from "firebase/firestore";
 import { DashboardShell } from '@/components/DashboardShell';
 import { SmartProductCard } from '@/components/SmartProductCard';
 import { Heart, Search } from 'lucide-react';
@@ -18,41 +18,51 @@ export default function FavoritesPage() {
     const [collections, setCollections] = useState<string[]>([]);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user?.uid) return;
 
-        // Fetch all user products then filter client-side to avoid composite index issues
-        const q = query(
-            collection(db, "products"),
-            where("userId", "==", user.uid)
-        );
+        let productsA: any[] = [];
+        let productsB: any[] = [];
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items: any[] = [];
-            const foundCollections = new Set<string>(['Home Office', 'Living Room', 'Tech Setup']);
+        const updateState = () => {
+            const allItems = [...productsA, ...productsB];
+            const uniqueItems = Array.from(new Map(allItems.map(p => [p.id, p])).values());
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.isFavorite) {
-                    items.push({
-                        id: doc.id,
-                        ...data,
-                        inStock: data.inStock !== false,
-                    });
-                }
-                if (data.collection) {
-                    foundCollections.add(data.collection);
-                }
+            const foundCollections = new Set<string>();
+            const items = uniqueItems.map(p => ({
+                ...p,
+                inStock: p.inStock !== false,
+            }));
+
+            items.forEach(p => {
+                if (p.collection) foundCollections.add(p.collection);
             });
 
-            // Sort by newest added to favorites (approx by creation time as we don't track favoritedAt)
             items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
             setProducts(items);
             setCollections(Array.from(foundCollections));
             setLoading(false);
+        };
+
+        const q1 = query(collection(db, "products"), where("userId", "==", user.uid), where("isFavorite", "==", true));
+        const unsub1 = onSnapshot(q1, (snap) => {
+            productsA = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Favorites (Owner) Error:", err);
+            setLoading(false);
         });
 
-        return () => unsubscribe();
+        const q2 = query(collection(db, "products"), where("participants", "array-contains", user.uid), where("isFavorite", "==", true));
+        const unsub2 = onSnapshot(q2, (snap) => {
+            productsB = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateState();
+        }, (err) => {
+            console.error("Favorites (Participant) Error:", err);
+            setLoading(false);
+        });
+
+        return () => { unsub1(); unsub2(); };
     }, [user]);
 
     const handleDelete = async (productId: string) => {

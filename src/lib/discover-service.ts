@@ -73,6 +73,7 @@ export const DiscoverService = {
                     productsRef,
                     where("userId", "==", data.userId),
                     where("collection", "==", data.name),
+                    where("isPublic", "==", true),
                     limit(3)
                 );
                 const productsSnap = await getDocs(productsQuery);
@@ -135,6 +136,7 @@ export const DiscoverService = {
                     productsRef,
                     where("userId", "==", data.userId),
                     where("collection", "==", data.name),
+                    where("isPublic", "==", true),
                     limit(3)
                 );
                 const productsSnap = await getDocs(productsQuery);
@@ -153,6 +155,25 @@ export const DiscoverService = {
 
         } catch (error) {
             console.error("Error fetching followed collections:", error);
+            return [];
+        }
+    },
+
+    // NEW: Global Price Drops
+    getGlobalPriceDrops: async (limitCount = 10) => {
+        try {
+            const productsRef = collection(db, "products");
+            const q = query(
+                productsRef,
+                where("isPublic", "==", true),
+                where("priceDropPercentage", ">", 0),
+                orderBy("priceDropPercentage", "desc"),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error fetching global price drops:", error);
             return [];
         }
     }
