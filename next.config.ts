@@ -1,4 +1,23 @@
 import { withSentryConfig } from "@sentry/nextjs";
+// @ts-ignore
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+  // @ts-ignore
+  skipWaiting: true,
+  workboxOptions: {
+    cleanupOutdatedCaches: true,
+    clientsClaim: true,
+    // @ts-ignore
+    skipWaiting: true,
+    modifyURLPrefix: {
+      "_next/static": "/_next/static",
+    },
+  },
+});
 
 const nextConfig = {
   images: {
@@ -17,7 +36,7 @@ const nextConfig = {
   serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withPWA(nextConfig), {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 

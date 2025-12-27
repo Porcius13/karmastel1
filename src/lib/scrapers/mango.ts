@@ -55,16 +55,33 @@ export const mangoScraper = async ({ page }: ScraperContext): Promise<ScrapedDat
 
         // 3. DOM Selectors
         if (!res.price) {
-            const priceEl = document.querySelector('.product-features-prices__price') || document.querySelector('.product-sale');
+            const priceEl = document.querySelector('.product-features-prices__price') ||
+                document.querySelector('.product-sale') ||
+                document.querySelector('span[data-testid="current-price"]'); // Possible new selector
+
             if (priceEl) {
                 const text = priceEl.textContent || "";
                 const digits = text.replace(/[^\d]/g, ""); // e.g. 1.299,99 TL
                 if (digits) res.price = parseFloat(digits) / 100;
             }
-
-            const titleEl = document.querySelector('h1');
-            if (titleEl && !res.title) res.title = titleEl.textContent?.trim() || "";
         }
+
+        // 4. Aggressive Fallback (Regex search in body)
+        if (!res.price) {
+            const bodyText = document.body.innerText;
+            // Look for patterns like "1.299,99 TL" or "₺1.299,99" close to "price" or just isolated
+            // This is risky but better than 0.
+            // Try to find the first price-like string that is not a phone number or date
+            const priceMatch = bodyText.match(/(\d{1,3}(\.\d{3})*,\d{2})\s?TL/);
+            if (priceMatch) {
+                const digits = priceMatch[1].replace(/[^\d]/g, "");
+                res.price = parseFloat(digits) / 100;
+            }
+        }
+
+        // Title fallback (always try to get title if not found yet)
+        const titleEl = document.querySelector('h1');
+        if (titleEl && !res.title) res.title = titleEl.textContent?.trim() || "";
 
         return res;
     });

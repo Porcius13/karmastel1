@@ -24,8 +24,27 @@ const luckiestGuy = Luckiest_Guy({
 export const metadata: Metadata = {
   title: "FAVDUCK",
   description: "Universal Wishlist Tracker",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FAVDUCK",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false, // Critical for 'app-like' feel
+    viewportFit: "cover",
+  },
 };
 
+export const viewport = {
+  themeColor: "#121212",
+};
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthContextProvider } from "@/context/AuthContext";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
