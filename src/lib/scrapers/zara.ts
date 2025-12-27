@@ -4,7 +4,7 @@ import { ScraperContext, ScrapedData } from "./types";
 export const zaraScraper = async ({ page }: ScraperContext): Promise<ScrapedData> => {
     if (!page) throw new Error("Zara scraper requires Puppeteer page");
 
-    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
 
     console.log("[Zara Scraper] Starting extraction...");
 
