@@ -147,7 +147,7 @@ export default function CollectionsPage() {
                 updatedAt: new Date()
             }, { merge: true });
 
-            // Sync to all products in this collection
+            // Sync to all products in this collection with batching (max 500 ops)
             const productsRef = collection(db, "products");
             const q = query(
                 productsRef,
@@ -155,11 +155,23 @@ export default function CollectionsPage() {
                 where("collection", "==", collectionName)
             );
             const snapshot = await getDocs(q);
-            const batch = writeBatch(db);
-            snapshot.docs.forEach((doc) => {
-                batch.update(doc.ref, { isPublic: newStatus });
-            });
-            await batch.commit();
+
+            // Chunk updates into batches of 450 (safe margin below 500)
+            const CHUNK_SIZE = 450;
+            const chunks = [];
+            for (let i = 0; i < snapshot.docs.length; i += CHUNK_SIZE) {
+                chunks.push(snapshot.docs.slice(i, i + CHUNK_SIZE));
+            }
+
+            console.log(`Syncing privacy for ${snapshot.size} products in ${chunks.length} batches.`);
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                chunk.forEach((doc) => {
+                    batch.update(doc.ref, { isPublic: newStatus });
+                });
+                await batch.commit();
+            }
 
             console.log(`Privacy for ${collectionName} set to ${newStatus}`);
         } catch (err) {

@@ -34,6 +34,8 @@ export const tr = {
         close: "Kapat",
         unauthorized: "Yetkisiz işlem.",
         error_occurred: "Bir hata oluştu.",
+        items_count: "{count} Ürün",
+        items_count_single: "1 Ürün",
     },
     profile: {
         title: "Hesap & Profil",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion, getDoc, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, updateDoc, arrayUnion, getDoc, addDoc, orderBy, limit } from "firebase/firestore";
 import { scrapeProduct } from "@/lib/scraper";
 import * as Sentry from "@sentry/nextjs";
 
@@ -11,68 +11,95 @@ export const maxDuration = 60; // Vercel Timeout Extension
 
 export async function GET() {
     try {
-        // 1. Fetch Pending Alerts
+        const productsRef = collection(db, "products");
         const alertsRef = collection(db, "stock_alerts");
-        const q = query(alertsRef, where("status", "==", "pending"));
-        const snapshot = await getDocs(q);
 
-        if (snapshot.empty) {
-            return NextResponse.json({ success: true, message: "No pending alerts found." });
+        // 1. Fetch Pending Alerts (Priority High)
+        const alertsQ = query(alertsRef, where("status", "==", "pending"));
+        const alertsSnapshot = await getDocs(alertsQ);
+
+        // 2. Fetch Stale Products (Priority Medium)
+        // We look for products check longest ago.
+        // Note: Products without 'lastStockCheck' field are ignored by orderBy, so we need a fallback.
+        let staleProducts: any[] = [];
+        try {
+            const staleQ = query(productsRef, orderBy("lastStockCheck", "asc"), limit(15));
+            const staleSnap = await getDocs(staleQ);
+            staleProducts = staleSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.warn("Ordered query for stale products failed (likely missing index):", e);
         }
 
-        // 2. Group by URL
-        const alertsByUrl: Record<string, any[]> = {};
+        // 3. Fallback / Discovery (Priority Low)
+        // If we didn't find enough stale products (maybe first run, or missing fields), fetch arbitrary ones to "seed" the date.
+        if (staleProducts.length < 5) {
+            const discoveryQ = query(productsRef, limit(20));
+            const discoverySnap = await getDocs(discoveryQ);
+            const discovered = discoverySnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const { productUrl } = data;
-
-            if (!alertsByUrl[productUrl]) {
-                alertsByUrl[productUrl] = [];
+            // Filter out ones we already have
+            const currentIds = new Set(staleProducts.map(p => p.id));
+            for (const p of discovered) {
+                // If it has no lastStockCheck, prioritize it
+                if (!currentIds.has(p.id)) {
+                    if (!p.lastStockCheck) {
+                        staleProducts.push(p);
+                    } else {
+                        // Only add if we really need padding
+                        if (staleProducts.length < 15) staleProducts.push(p);
+                    }
+                    currentIds.add(p.id);
+                }
             }
+        }
 
-            alertsByUrl[productUrl].push({
-                id: doc.id,
-                ...data
-            });
+        // 4. Consolidate URLs
+        const urlsToCheck = new Map<string, { productIds: Set<string>, alerts: any[] }>();
+
+        // Add Alerts
+        alertsSnapshot.forEach(doc => {
+            const data = doc.data();
+            const url = data.productUrl;
+            if (!urlsToCheck.has(url)) urlsToCheck.set(url, { productIds: new Set(), alerts: [] });
+            urlsToCheck.get(url)!.alerts.push({ id: doc.id, ...data });
+            urlsToCheck.get(url)!.productIds.add(data.productId);
         });
 
-        const urlsToCheck = Object.keys(alertsByUrl);
+        // Add Stale Products
+        staleProducts.forEach(p => {
+            const url = p.url;
+            if (url && url !== "MOCK") {
+                if (!urlsToCheck.has(url)) urlsToCheck.set(url, { productIds: new Set(), alerts: [] });
+                urlsToCheck.get(url)!.productIds.add(p.id);
+            }
+        });
+
+        const jobList = Array.from(urlsToCheck.entries());
+        console.log(`Starting stock/price check for ${jobList.length} unique URLs.`);
+
         let mailsSentCount = 0;
         let checkedUrlsCount = 0;
 
-        console.log(`Starting stock check for ${urlsToCheck.length} unique URLs.`);
-
-        // 3. Batch Scraping & Processing
-        // Using for..of loop to process sequentially and avoid hitting rate limits or server overload
-        for (const url of urlsToCheck) {
+        // 5. Execution Loop
+        for (const [url, context] of jobList) {
             try {
                 checkedUrlsCount++;
                 const scrapedData = await scrapeProduct(url);
 
-                // Check if we got valid data (if price is 0 and manual fallback, we might skip history or just log it)
                 const price = typeof scrapedData.price === 'number' ? scrapedData.price : 0;
-                const waitingAlerts = alertsByUrl[url];
                 const batch = writeBatch(db);
 
-                // Identify unique products to update (one URL might be tracked by multiple users/product docs)
-                // Using a Set to avoid duplicate updates to the same product doc in one batch
-                const uniqueProductIds = new Set(waitingAlerts.map(a => a.productId));
-
-                // Update Products with latest Price & Status & History
-                // Update Products with latest Price & Status & History
-                for (const productId of Array.from(uniqueProductIds)) {
+                // Update all associated products
+                for (const productId of Array.from(context.productIds)) {
                     const productRef = doc(db, "products", productId);
 
-                    // READ: Fetch current state to compare price
-                    // We must read individually to ensure we only append history ON CHANGE
                     try {
                         const productSnap = await getDoc(productRef);
                         if (!productSnap.exists()) continue;
                         const productData = productSnap.data();
 
                         const currentPrice = productData.price || 0;
-                        const newPrice = price; // Scraped price
+                        const newPrice = price;
 
                         const updates: any = {
                             price: newPrice,
@@ -80,7 +107,7 @@ export async function GET() {
                             lastStockCheck: serverTimestamp()
                         };
 
-                        // TRACK HIGHEST PRICE & DROP PERCENTAGE
+                        // Track Stats
                         const currentHighest = productData.highestPrice || currentPrice;
                         if (newPrice > currentHighest) {
                             updates.highestPrice = newPrice;
@@ -89,12 +116,9 @@ export async function GET() {
                             updates.highestPrice = currentHighest;
                             const dropRatio = (currentHighest - newPrice) / currentHighest;
                             updates.priceDropPercentage = Math.round(dropRatio * 100);
-                        } else {
-                            updates.priceDropPercentage = productData.priceDropPercentage || 0;
                         }
 
-                        // CONDITIONAL HISTORY UPDATE
-                        // Only add to history if price changed OR history is empty
+                        // History
                         if (currentPrice !== newPrice) {
                             try {
                                 const historyRef = collection(db, "products", productId, "priceHistory");
@@ -103,43 +127,26 @@ export async function GET() {
                                     date: new Date().toISOString(),
                                     currency: productData.currency || 'TRY'
                                 });
-                                console.log(`Cron: Saved price update for ${productId} to subcollection`);
-                            } catch (histErr) {
-                                console.error(`Cron: Failed to save history for ${productId}:`, histErr);
+                                console.log(`Price changed for ${productId} (${currentPrice} -> ${newPrice}). Saved history.`);
+                            } catch (hErr) {
+                                console.error("History save error:", hErr);
                             }
                         }
 
                         batch.update(productRef, updates);
-                        console.log(`Cron: Updated ${productId} - New Price: ${newPrice}, Drop: ${updates.priceDropPercentage}%`);
-
-                    } catch (readError) {
-                        console.error(`Error reading product ${productId}:`, readError);
+                    } catch (err) {
+                        console.error(`Error updating product ${productId}`, err);
                     }
                 }
 
-                // B. Check Target Price
-                if (scrapedData.inStock && waitingAlerts.length > 0) {
-                    // ... existing loop for notifications ...
-                    waitingAlerts.forEach(alert => {
-                        console.log(`Mail Gönderiliyor: ${alert.email} for product ${alert.productId}`);
-                        // Update Alert Status
+                // Handle Alerts
+                if (scrapedData.inStock && context.alerts.length > 0) {
+                    for (const alert of context.alerts) {
+                        console.log(`Notifying ${alert.email} about ${alert.productId}`);
                         const alertRef = doc(db, "stock_alerts", alert.id);
-                        batch.update(alertRef, {
-                            status: "completed",
-                            notifiedAt: serverTimestamp()
-                        });
+                        batch.update(alertRef, { status: "completed", notifiedAt: serverTimestamp() });
                         mailsSentCount++;
-                    });
-                    console.log(`Stock found for ${url}. Notifying ${waitingAlerts.length} users.`);
-                }
-
-                // (Target Price Logic - Handled in Notifications block or implicitly by Price Update)
-                // We rely on the Frontend to show "Target Met" badge based on updated price.
-
-                if (scrapedData.inStock && waitingAlerts.length > 0) {
-                    // ... logic handled above or consolidated here
-                } else {
-                    console.log(`Process: ${url} Price: ${price}`);
+                    }
                 }
 
                 await batch.commit();

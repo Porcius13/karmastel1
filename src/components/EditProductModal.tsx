@@ -32,8 +32,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                 targetPrice: targetPrice ? Number(targetPrice) : null
             });
 
-            // Auto-Set Collection Cover Logic (Client-Side)
-            if (collection && collection !== t('edit_modal.uncategorized') && product.image) {
+            // Auto-Set Collection Cover & Sync Public Status (Client-Side)
+            if (collection && collection !== t('edit_modal.uncategorized')) {
                 try {
                     // 1. Generate ID
                     const safeName = typeof window !== 'undefined'
@@ -42,23 +42,40 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                     const settingsId = `${product.userId}_${safeName}`;
 
                     // 2. Check Existance
-                    const { getDoc, setDoc } = await import("firebase/firestore");
+                    const { getDoc, setDoc, doc } = await import("firebase/firestore");
                     const settingsRef = doc(db, "collection_settings", settingsId);
                     const settingsDoc = await getDoc(settingsRef);
 
-                    if (!settingsDoc.exists() || !settingsDoc.data().image) {
+                    let isPublic = false;
+
+                    if (settingsDoc.exists()) {
+                        isPublic = settingsDoc.data().isPublic || false;
+                    }
+
+                    // A. Update the product's isPublic status to match collection
+                    await updateDoc(productRef, {
+                        isPublic: isPublic
+                    });
+
+                    // B. Auto-Set Cover Image if missing
+                    if (product.image && (!settingsDoc.exists() || !settingsDoc.data().image)) {
                         await setDoc(settingsRef, {
                             userId: product.userId,
                             name: collection,
                             image: product.image,
                             updatedAt: new Date(),
-                            isPublic: settingsDoc.exists() ? settingsDoc.data().isPublic : false
+                            isPublic: isPublic
                         }, { merge: true });
                         console.log("Auto-set cover image for edited collection");
                     }
                 } catch (err) {
-                    console.error("Failed to auto-set cover:", err);
+                    console.error("Failed to auto-set cover or sync privacy:", err);
                 }
+            } else {
+                // If moving to Uncategorized or clearing collection, set isPublic to false (default safety)
+                await updateDoc(productRef, {
+                    isPublic: false
+                });
             }
 
             onClose();

@@ -54,8 +54,6 @@ export const DiscoverService = {
                 limit(limitCount)
             );
 
-            // Note: This query requires a Firestore Index (isPublic ASC). 
-            // If it fails, it usually logs a link to create the index.
             const snapshot = await getDocs(q);
 
             if (snapshot.empty) {
@@ -63,12 +61,14 @@ export const DiscoverService = {
             }
 
             const collections: PublicCollection[] = [];
+            const { getCountFromServer } = await import("firebase/firestore");
 
             for (const colDoc of snapshot.docs) {
                 const data = colDoc.data();
 
-                // Fetch preview images from products in this collection
                 const productsRef = collection(db, "products");
+
+                // 1. Query for Preview Images
                 const productsQuery = query(
                     productsRef,
                     where("userId", "==", data.userId),
@@ -77,14 +77,39 @@ export const DiscoverService = {
                     limit(3)
                 );
                 const productsSnap = await getDocs(productsQuery);
-                const images = productsSnap.docs.map(d => d.data().image).filter(Boolean);
+                let images = productsSnap.docs.map(d => d.data().image).filter(Boolean);
+
+                // Use manually set cover image if available
+                if (data.image) {
+                    // Remove duplicate if it exists in the fetched images to avoid showing it twice
+                    images = images.filter(img => img !== data.image);
+                    // Add to the front
+                    images.unshift(data.image);
+                }
+
+                // 2. Query for Total Count (Separate to avoid fetching all docs)
+                const countQuery = query(
+                    productsRef,
+                    where("userId", "==", data.userId),
+                    where("collection", "==", data.name),
+                    where("isPublic", "==", true)
+                );
+
+                let totalCount = 0;
+                try {
+                    const countSnapshot = await getCountFromServer(countQuery);
+                    totalCount = countSnapshot.data().count;
+                } catch (err) {
+                    console.warn("Could not get count from server", err);
+                    totalCount = productsSnap.size; // Fallback
+                }
 
                 collections.push({
                     id: colDoc.id,
                     name: data.name,
                     userId: data.userId,
-                    previewImages: images,
-                    itemCount: productsSnap.size // Approximate for preview
+                    previewImages: images.slice(0, 3), // Keep top 3 for preview
+                    itemCount: totalCount
                 });
             }
 
@@ -108,11 +133,9 @@ export const DiscoverService = {
 
             // Firestore 'in' query supports max 10 values. 
             // For MVP, we'll take top 10 followed users. 
-            // In production, we'd batch this or duplicate feed data.
             const topFollowedIds = followedUserIds.slice(0, 10);
 
             // 2. Query collections where userId is in this list from Firestore directly
-            // Security Rules require 'isPublic == true' to be part of the query info for non-owners.
             const colsRef = collection(db, "collection_settings");
             const q = query(
                 colsRef,
@@ -126,12 +149,14 @@ export const DiscoverService = {
             if (snapshot.empty) return [];
 
             const collections: PublicCollection[] = [];
+            const { getCountFromServer } = await import("firebase/firestore");
 
             for (const colDoc of snapshot.docs) {
                 const data = colDoc.data();
 
-                // Fetch preview images
                 const productsRef = collection(db, "products");
+
+                // 1. Preview Images
                 const productsQuery = query(
                     productsRef,
                     where("userId", "==", data.userId),
@@ -140,14 +165,37 @@ export const DiscoverService = {
                     limit(3)
                 );
                 const productsSnap = await getDocs(productsQuery);
-                const images = productsSnap.docs.map(d => d.data().image).filter(Boolean);
+                let images = productsSnap.docs.map(d => d.data().image).filter(Boolean);
+
+                // Use manually set cover image if available
+                if (data.image) {
+                    images = images.filter(img => img !== data.image);
+                    images.unshift(data.image);
+                }
+
+                // 2. Total Count
+                const countQuery = query(
+                    productsRef,
+                    where("userId", "==", data.userId),
+                    where("collection", "==", data.name),
+                    where("isPublic", "==", true)
+                );
+
+                let totalCount = 0;
+                try {
+                    const countSnapshot = await getCountFromServer(countQuery);
+                    totalCount = countSnapshot.data().count;
+                } catch (err) {
+                    console.warn("Could not get count from server", err);
+                    totalCount = productsSnap.size;
+                }
 
                 collections.push({
                     id: colDoc.id,
                     name: data.name,
                     userId: data.userId,
-                    previewImages: images,
-                    itemCount: productsSnap.size
+                    previewImages: images.slice(0, 3),
+                    itemCount: totalCount
                 });
             }
 

@@ -310,6 +310,17 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                                 {t('product.out_of_stock')}
                             </span>
                         )}
+
+                        {/* Price Drop Badge (New!) */}
+                        {/* @ts-ignore - priceDropPercentage exists on runtime object */}
+                        {product.priceDropPercentage > 0 && (
+                            <span className="bg-green-500/90 backdrop-blur text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1 shadow-glow animate-pulse">
+                                <TrendingDown size={12} className="stroke-[3px]" />
+                                {/* @ts-ignore */}
+                                %{product.priceDropPercentage}
+                            </span>
+                        )}
+
                         {/* Target Price Met Badge */}
                         {isTargetMet && (
                             <span className="bg-primary/90 backdrop-blur text-primary-foreground text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1 shadow-glow animate-pulse">

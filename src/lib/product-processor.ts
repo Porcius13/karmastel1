@@ -70,7 +70,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             price: scraped.price,
             image: scraped.image,
             currency: scraped.currency,
-            inStock: scraped.inStock,
+            inStock: scraped.inStock ?? true,
             source: scraped.source || (url ? new URL(url).hostname.replace('www.', '') : 'unknown'),
             status: 'active',
             isScrapeFailed: false,
