@@ -35,7 +35,7 @@ export async function GET() {
         if (staleProducts.length < 5) {
             const discoveryQ = query(productsRef, limit(20));
             const discoverySnap = await getDocs(discoveryQ);
-            const discovered = discoverySnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const discovered = discoverySnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
 
             // Filter out ones we already have
             const currentIds = new Set(staleProducts.map(p => p.id));
