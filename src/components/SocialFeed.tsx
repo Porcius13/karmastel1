@@ -50,7 +50,11 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ followingIds }) => {
                         const priceMap: Record<string, { price: any, currency: string }> = {};
 
                         await Promise.all(chunks.map(async (chunk) => {
-                            const q = query(collection(db, "products"), where(documentId(), "in", chunk));
+                            const q = query(
+                                collection(db, "products"),
+                                where(documentId(), "in", chunk),
+                                where("isPublic", "==", true)
+                            );
                             const snap = await getDocs(q);
                             snap.docs.forEach(doc => {
                                 const data = doc.data();
