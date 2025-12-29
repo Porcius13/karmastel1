@@ -75,7 +75,8 @@ export default function SharedCollectionPage() {
                     const q = query(
                         collection(db, "collection_settings"),
                         where("userId", "==", userId),
-                        where("name", "==", decodedName)
+                        where("name", "==", decodedName),
+                        where("isPublic", "==", true)
                     );
                     const qSnap = await getDocs(q);
                     if (!qSnap.empty) {
