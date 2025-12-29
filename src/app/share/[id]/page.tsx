@@ -5,8 +5,9 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Lock, ExternalLink } from 'lucide-react';
+import { ArrowRight, Lock, ExternalLink, User } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { UserService } from '@/lib/user-service';
 
 interface Product {
     id: string;
@@ -26,7 +27,8 @@ export default function SharedCollectionPage() {
     const [error, setError] = useState('');
     const [collectionName, setCollectionName] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
-    const [ownerName, setOwnerName] = useState('A User'); // Could fetch user profile if available, for now generic.
+    const [ownerName, setOwnerName] = useState('A User');
+    const [ownerAvatar, setOwnerAvatar] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchCollection() {
@@ -87,11 +89,20 @@ export default function SharedCollectionPage() {
                     return;
                 }
 
-                // 2. Fetch Products
+                // 2. Fetch Owner Profile
+                UserService.getUserProfile(userId).then(profile => {
+                    if (profile) {
+                        setOwnerName(profile.displayName || profile.username || 'A User');
+                        setOwnerAvatar(profile.photoURL || null);
+                    }
+                });
+
+                // 3. Fetch Products
                 const productsQuery = query(
                     collection(db, "products"),
                     where("userId", "==", userId),
-                    where("collection", "==", decodedName)
+                    where("collection", "==", decodedName),
+                    where("isPublic", "==", true)
                 );
 
                 const productSnap = await getDocs(productsQuery);
@@ -150,7 +161,18 @@ export default function SharedCollectionPage() {
                 <div className="mb-10 text-center md:text-left">
                     <span className="text-sm font-bold text-primary uppercase tracking-widest mb-2 block">Shared Collection</span>
                     <h1 className="text-4xl md:text-5xl font-black mb-4">{collectionName}</h1>
-                    <p className="text-muted-foreground">{products.length} items curated by {ownerName}</p>
+                    <div className="flex items-center justify-center md:justify-start gap-3">
+                        {ownerAvatar ? (
+                            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-border">
+                                <Image src={ownerAvatar} alt={ownerName} fill sizes="32px" className="object-cover" unoptimized />
+                            </div>
+                        ) : (
+                            <div className="w-8 h-8 bg-surfaceHighlight rounded-full flex items-center justify-center text-muted-foreground">
+                                <User size={16} />
+                            </div>
+                        )}
+                        <p className="text-muted-foreground font-medium">{products.length} items curated by {ownerName}</p>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
