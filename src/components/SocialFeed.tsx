@@ -77,7 +77,7 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ followingIds }) => {
                 setActivities(feed);
 
                 // Auto-cleanup own legacy activities in background
-                if (user) {
+                if (user && user.uid) {
                     const myLegacyActivities = feed.filter(a =>
                         a.actorId === user.uid &&
                         (a.actorName === 'User' || a.actorName === 'Someone' || !a.id?.includes('_'))

@@ -3,18 +3,18 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // USERS:
-    // Allow public read to facilitate username->email lookup during login
+    // Allow public read to facilitate username->email lookup and discovery
     match /users/{userId} {
-      allow read: if request.auth != null; 
+      allow read: if true; 
       allow write: if request.auth != null && request.auth.uid == userId;
 
       match /followers/{followerId} {
-        allow read: if request.auth != null;
+        allow read: if true;
         allow write: if request.auth != null && request.auth.uid == followerId;
       }
 
       match /following/{targetId} {
-        allow read: if request.auth != null;
+        allow read: if true;
         allow write: if request.auth != null && request.auth.uid == userId;
       }
 
@@ -24,7 +24,8 @@ service cloud.firestore {
       }
 
       match /saved_collections/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
@@ -47,7 +48,7 @@ service cloud.firestore {
 
     // COLLECTION SETTINGS:
     match /collection_settings/{settingsId} {
-      allow read: if isAuthenticated();
+      allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.get('userId', '') == request.auth.uid;
       allow update: if isAuthenticated() && (
                       resource.data.get('userId', '') == request.auth.uid || 
