@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Folder, Trash2, Globe, Lock, Share2 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -22,6 +23,7 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
     const { t } = useLanguage();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = React.useState(false);
+    const [imageError, setImageError] = React.useState(false);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -54,12 +56,14 @@ export function CollectionCard({ name, count, isPublic, shareId, onDelete, onTog
                 className="block w-full h-full bg-surface border border-surface-highlight p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary/5 flex flex-col items-center justify-center text-center relative overflow-hidden group"
             >
                 {/* Background Image */}
-                {image && (
+                {image && !imageError && (
                     <div className="absolute inset-0 z-0">
-                        <img
+                        <Image
                             src={image}
                             alt={name}
-                            className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity"
+                            fill
+                            className="object-cover opacity-40 group-hover:opacity-50 transition-opacity"
+                            onError={() => setImageError(true)}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                     </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
@@ -40,6 +41,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
     const { t } = useLanguage();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
+    const [imageError, setImageError] = useState(false);
 
     // Debugging
     // console.log("SmartProductCard Collections:", collections);
@@ -286,15 +288,14 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                     relative overflow-hidden rounded-xl bg-surface shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:shadow-primary/10
                     ${viewMode === 'list' ? 'w-24 h-24 shrink-0' : (product.aspect || 'aspect-square') + ' w-full'}
                 `}>
-                    <Link href={`/product/${product.id}`} className="block h-full cursor-pointer">
-                        <img
+                    <Link href={`/product/${product.id}`} className="block h-full cursor-pointer relative">
+                        <Image
                             alt={product.title}
-                            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock ? 'grayscale opacity-60' : ''}`}
-                            src={product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image")}
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                                e.currentTarget.src = "https://placehold.co/600x600?text=No+Image";
-                            }}
+                            className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock ? 'grayscale opacity-60' : ''}`}
+                            src={imageError ? "https://placehold.co/600x600?text=No+Image" : (product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            onError={() => setImageError(true)}
                         />
                     </Link>
 

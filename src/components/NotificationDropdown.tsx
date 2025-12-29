@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Bell, Heart, Tag, User, X, Check, MessageSquare } from 'lucide-react';
 import { Notification, NotificationService } from "@/lib/notification-service";
@@ -120,7 +121,14 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
                                 {/* Icon / Avatar */}
                                 <div className="shrink-0 pt-1">
                                     {notif.senderAvatar ? (
-                                        <img src={notif.senderAvatar} alt="User" className="w-9 h-9 rounded-full object-cover border border-border" />
+                                        <div className="relative w-9 h-9 rounded-full overflow-hidden border border-border">
+                                            <Image
+                                                src={notif.senderAvatar}
+                                                alt="User"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
                                     ) : (
                                         <div className={`w-9 h-9 rounded-full flex items-center justify-center ${getColor(notif.type)} shadow-sm`}>
                                             {getIcon(notif.type)}

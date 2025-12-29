@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -11,6 +12,7 @@ export default function Navbar() {
     const { user, logout } = useAuth();
     const { t } = useLanguage();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -85,11 +87,13 @@ export default function Navbar() {
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="flex size-10 items-center justify-center rounded-full bg-surface hover:bg-muted/10 transition-colors overflow-hidden border border-border"
                             >
-                                {user?.photoURL ? (
-                                    <img
+                                {user?.photoURL && !imageError ? (
+                                    <Image
                                         alt="User Avatar"
-                                        className="w-full h-full object-cover"
+                                        className="object-cover"
                                         src={user.photoURL}
+                                        fill
+                                        onError={() => setImageError(true)}
                                     />
                                 ) : (
                                     <User size={20} className="text-muted-foreground" />

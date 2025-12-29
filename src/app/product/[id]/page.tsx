@@ -35,6 +35,7 @@ export default function ProductDetailPage() {
     const [savingNote, setSavingNote] = useState(false);
     const [collections, setCollections] = useState<string[]>([]);
     const [collectionDropdownPos, setCollectionDropdownPos] = useState<{ x: number, y: number } | null>(null);
+    const [imageError, setImageError] = useState(false);
 
     // Fetch Product Data
     useEffect(() => {
@@ -217,14 +218,13 @@ export default function ProductDetailPage() {
                     <div className="lg:col-span-5 space-y-6">
                         <div className="group relative w-full aspect-[4/5] md:aspect-square bg-surface rounded-3xl overflow-hidden border border-surfaceHighlight shadow-2xl">
                             <Image
-                                src={product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image")}
+                                src={imageError ? "https://placehold.co/600x600?text=No+Image" : (product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
                                 alt={product.title}
                                 fill
                                 className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock && 'grayscale opacity-75'}`}
                                 sizes="(max-width: 768px) 100vw, 50vw"
                                 priority
-                                unoptimized
-                                referrerPolicy="no-referrer"
+                                onError={() => setImageError(true)}
                             />
                             {!product.inStock && (
                                 <div className="absolute top-4 left-4 bg-danger text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider shadow-lg">
