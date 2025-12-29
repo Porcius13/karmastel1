@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 // CORS Headers helper
 function corsHeaders() {
@@ -29,14 +28,22 @@ export async function POST(request: Request) {
             );
         }
 
-        // Save to Firestore
-        const docRef = await addDoc(collection(db, "stock_alerts"), {
+        if (!adminDb) {
+            console.error("Firebase Admin DB not initialized");
+            return NextResponse.json(
+                { success: false, error: "Server Configuration Error" },
+                { status: 500, headers: corsHeaders() }
+            );
+        }
+
+        // Save to Firestore using Admin SDK
+        const docRef = await adminDb.collection("stock_alerts").add({
             productId,
             productUrl,
             email,
             userId,
             status: "pending",
-            createdAt: serverTimestamp()
+            createdAt: new Date() // Admin SDK handles dates natively or use Timestamp
         });
 
         return NextResponse.json(
