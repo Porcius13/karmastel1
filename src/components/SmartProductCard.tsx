@@ -343,7 +343,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         <Image
                             alt={product.title}
                             className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock ? 'grayscale opacity-60' : ''}`}
-                            src={imageError ? "https://placehold.co/600x600?text=No+Image" : (product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
+                            src={imageError ? "https://placehold.co/600x600?text=No+Image" : ((typeof product.image === 'string' && product.image.startsWith('http://')) ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             priority={priority}

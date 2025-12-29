@@ -218,7 +218,7 @@ export default function ProductDetailPage() {
                     <div className="lg:col-span-5 space-y-6">
                         <div className="group relative w-full aspect-[4/5] md:aspect-square bg-surface rounded-3xl overflow-hidden border border-surfaceHighlight shadow-2xl">
                             <Image
-                                src={imageError ? "https://placehold.co/600x600?text=No+Image" : (product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
+                                src={imageError ? "https://placehold.co/600x600?text=No+Image" : ((typeof product.image === 'string' && product.image.startsWith('http://')) ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
                                 alt={product.title}
                                 fill
                                 className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock && 'grayscale opacity-75'}`}
