@@ -1,56 +1,55 @@
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { scrapeProduct } from "@/lib/scraper";
-import * as Sentry from "@sentry/nextjs";
-import { Timestamp } from 'firebase-admin/firestore';
+import * as dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Vercel Timeout Extension
+// Load env vars
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: resolve(__dirname, '../.env.local') });
 
-export async function GET() {
-    console.log("Cron Job Started: Checking stock...");
+// Dynamic imports
+const { adminDb } = await import("../src/lib/firebase-admin");
+const { scrapeProduct } = await import("../src/lib/scraper");
+import { Timestamp } from 'firebase-admin/firestore'; // Admin SDK types
+
+async function main() {
+    console.log("Starting manual stock check (Admin SDK)...");
 
     if (!adminDb) {
-        const error = "Firebase Admin DB not initialized. Check server environment variables.";
-        console.error(error);
-        Sentry.captureMessage(error);
-        return NextResponse.json({ success: false, error }, { status: 500 });
+        console.error("Firebase Admin DB not initialized. Check env vars.");
+        process.exit(1);
     }
 
     try {
         const productsRef = adminDb.collection("products");
         const alertsRef = adminDb.collection("stock_alerts");
 
-        // 1. Fetch Pending Alerts (Priority High)
+        // 1. Fetch Pending Alerts
         const alertsSnap = await alertsRef.where("status", "==", "pending").get();
 
         // 2. Fetch Stale Products
         let staleProducts: any[] = [];
         try {
-            const staleSnap = await productsRef.orderBy("lastStockCheck", "asc").limit(15).get();
+            // Admin SDK 'orderBy' and 'limit' chaining
+            const staleSnap = await productsRef.orderBy("lastStockCheck", "asc").limit(5).get();
             staleProducts = staleSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (e) {
-            console.warn("Ordered query for stale products failed:", e);
+            console.warn("Ordered query failed:", e);
         }
 
-        // 3. Fallback / Discovery
+        // 3. Fallback
         if (staleProducts.length < 5) {
-            const discoveryQ = productsRef.limit(20);
-            const discoverySnap = await discoveryQ.get();
+            // Basic fetch
+            const discoverySnap = await productsRef.limit(20).get();
             const discovered = discoverySnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
             const currentIds = new Set(staleProducts.map(p => p.id));
             for (const p of discovered) {
-                // If it has no lastStockCheck, prioritize it
-                const pData = p as any;
                 if (!currentIds.has(p.id)) {
-                    if (!pData.lastStockCheck) {
-                        staleProducts.push(p);
-                    } else {
-                        if (staleProducts.length < 15) staleProducts.push(p);
-                    }
+                    staleProducts.push(p);
                     currentIds.add(p.id);
+                    if (staleProducts.length >= 5) break;
                 }
             }
         }
@@ -75,16 +74,14 @@ export async function GET() {
         });
 
         const jobList = Array.from(urlsToCheck.entries());
-        console.log(`Starting stock/price check for ${jobList.length} unique URLs.`);
+        console.log(`Checking ${jobList.length} unique URLs...`);
 
-        let mailsSentCount = 0;
-        let checkedUrlsCount = 0;
-
-        // 5. Execution Loop
+        // 5. Execution
         for (const [url, context] of jobList) {
             try {
-                checkedUrlsCount++;
+                console.log(`Scraping: ${url}`);
                 const scrapedData = await scrapeProduct(url);
+                console.log(`Scraped Price: ${scrapedData.price}, In Stock: ${scrapedData.inStock}`);
 
                 const price = typeof scrapedData.price === 'number' ? scrapedData.price : 0;
                 const batch = adminDb.batch();
@@ -118,13 +115,19 @@ export async function GET() {
 
                         if (currentPrice !== newPrice) {
                             const historyRef = productsRef.doc(productId).collection("priceHistory");
+                            // Add to subcollection
+                            // In Admin SDK: historyRef.add(...) calls are simple, but for batch we need doc ref.
+                            // batch.create(historyRef.doc(), { ... })
                             const newHistoryDoc = historyRef.doc();
                             batch.set(newHistoryDoc, {
                                 price: newPrice,
                                 date: new Date().toISOString(),
                                 currency: productData.currency || 'TRY'
                             });
-                            console.log(`Price changed for ${productId} (${currentPrice} -> ${newPrice}). Saved history.`);
+
+                            console.log(`Price updated for ${productId}: ${currentPrice} -> ${newPrice}`);
+                        } else {
+                            console.log(`Price unchanged for ${productId}`);
                         }
 
                         batch.update(productRef, updates);
@@ -133,35 +136,18 @@ export async function GET() {
                     }
                 }
 
-                if (scrapedData.inStock && context.alerts.length > 0) {
-                    for (const alert of context.alerts) {
-                        console.log(`Notifying ${alert.email} about ${alert.productId}`);
-                        const alertRef = alertsRef.doc(alert.id);
-                        batch.update(alertRef, { status: "completed", notifiedAt: Timestamp.now() });
-                        mailsSentCount++;
-                    }
-                }
-
                 await batch.commit();
 
             } catch (error) {
                 console.error(`Error processing URL ${url}:`, error);
-                Sentry.captureException(error);
             }
         }
 
-        return NextResponse.json({
-            success: true,
-            checkedUrls: checkedUrlsCount,
-            mailsSent: mailsSentCount
-        });
+        console.log("Done.");
 
-    } catch (error: any) {
-        console.error("Cron Job Error:", error);
-        Sentry.captureException(error);
-        return NextResponse.json(
-            { success: false, error: "Internal Server Error" },
-            { status: 500 }
-        );
+    } catch (error) {
+        console.error("Script failed:", error);
     }
 }
+
+main();
