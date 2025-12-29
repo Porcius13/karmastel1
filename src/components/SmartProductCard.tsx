@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus } from 'lucide-react';
+import { ExternalLink, Bell, TrendingDown, ArrowRight, Trash2, Pencil, CheckCircle2, Heart, FolderPlus, Lock, Globe } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,6 +21,7 @@ interface Product {
     collection?: string;
     targetPrice?: number;
     isFavorite?: boolean;
+    isPublic?: boolean;
     userId?: string;
     originalSourceId?: string;
     createdAt?: string | any;
@@ -34,9 +35,10 @@ interface SmartProductCardProps {
     onDelete?: () => void;
     collections?: string[]; // Needed for Edit Modal
     viewMode?: 'grid' | 'list';
+    priority?: boolean;
 }
 
-export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [], viewMode = 'grid' }) => {
+export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: initialProduct, onSetAlarm, onOpenChart, onDelete, collections = [], viewMode = 'grid', priority = false }) => {
     const router = useRouter();
     const { t } = useLanguage();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -57,6 +59,55 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
 
     const { user } = useAuth();
     const isOwner = user?.uid === product.userId;
+
+    const handleTogglePrivacy = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (!isOwner || !user) return;
+
+        const newPrivacy = !product.isPublic;
+
+        // Optimistic update
+        setProduct(prev => ({ ...prev, isPublic: newPrivacy }));
+
+        try {
+            const docRef = doc(db, "products", product.id);
+            await updateDoc(docRef, {
+                isPublic: newPrivacy,
+                updatedAt: new Date().toISOString()
+            });
+
+            if (newPrivacy) {
+                // Log activity if made public
+                const { ActivityService } = await import('@/lib/activity-service');
+                const { UserService } = await import('@/lib/user-service');
+                const profile = await UserService.getUserProfile(user.uid);
+
+                await ActivityService.logActivity({
+                    type: 'ADD_PRODUCT',
+                    actorId: user.uid,
+                    actorName: profile?.displayName || profile?.username || user.displayName || 'Kullanıcı',
+                    actorAvatar: profile?.photoURL || user.photoURL,
+                    targetId: product.id,
+                    targetName: product.title,
+                    targetImage: product.image,
+                    isPublic: true,
+                    metadata: {
+                        price: typeof product.price === 'string'
+                            ? parseFloat(product.price.replace(/[^0-9,.-]/g, '').replace(',', '.'))
+                            : product.price,
+                        currency: (product as any).currency || 'TRY'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Error updating privacy:", error);
+            // Revert
+            setProduct(prev => ({ ...prev, isPublic: !newPrivacy }));
+            alert(t('common.error_occurred'));
+        }
+    };
 
     const handleToggleFavorite = async () => {
         if (!user) {
@@ -295,6 +346,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             src={imageError ? "https://placehold.co/600x600?text=No+Image" : (product.image?.startsWith('http://') ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            priority={priority}
                             onError={() => setImageError(true)}
                         />
                     </Link>
@@ -338,6 +390,18 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                             </div>
                         )}
                     </div>
+
+                    {/* Privacy Status Badge (Top Right, Interactive) */}
+                    {isOwner && (
+                        <button
+                            onClick={handleTogglePrivacy}
+                            className={`absolute top-3 right-3 z-10 backdrop-blur text-white text-[9px] font-bold px-2 py-1 rounded-lg uppercase tracking-wide flex items-center gap-1.5 border transition-all hover:scale-105 active:scale-95 shadow-lg ${product.isPublic ? 'bg-primary/40 border-primary/50 text-white shadow-glow' : 'bg-black/60 border-white/20'}`}
+                            title={product.isPublic ? 'Kamuya Açık (Tıklayıp Gizle)' : 'Özel (Tıklayıp Paylaş)'}
+                        >
+                            {product.isPublic ? <Globe size={11} className="text-primary-foreground" /> : <Lock size={11} />}
+                            {product.isPublic ? 'Kamu' : 'Özel'}
+                        </button>
+                    )}
                 </div>
 
                 {/* Meta Info */}

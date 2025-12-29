@@ -570,11 +570,12 @@ export default function Home() {
             : 'flex flex-col gap-4'
           }
         `}>
-          {filteredProducts.map((product) => (
+          {filteredProducts.map((product, index) => (
             <SmartProductCard
               key={product.id}
               product={product}
               viewMode={viewMode}
+              priority={index < 4}
               onSetAlarm={() => handleSetAlarm(product)}
               onOpenChart={() => setChartProduct(product)}
               onDelete={() => handleDelete(product)}

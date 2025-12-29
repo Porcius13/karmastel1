@@ -33,16 +33,14 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false, // Critical for 'app-like' feel
-    viewportFit: "cover",
-  },
 };
 
 export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Critical for 'app-like' feel
+  viewportFit: "cover",
   themeColor: "#121212",
 };
 import { ThemeProvider } from "@/providers/ThemeProvider";

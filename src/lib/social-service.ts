@@ -45,7 +45,7 @@ export const SocialService = {
             if (currentUserId !== ownerId) {
                 // Get sender details
                 const senderDoc = await getDoc(doc(db, "users", currentUserId));
-                const senderName = senderDoc.data()?.username || "Someone";
+                const senderName = senderDoc.data()?.displayName || senderDoc.data()?.username || "Kullanıcı";
                 const senderAvatar = senderDoc.data()?.photoURL;
 
                 await NotificationService.createNotification({
@@ -57,6 +57,18 @@ export const SocialService = {
                     senderId: currentUserId,
                     senderName: senderName,
                     senderAvatar: senderAvatar
+                });
+
+                // Log Social Activity
+                const { ActivityService } = await import("./activity-service");
+                await ActivityService.logActivity({
+                    type: 'LIKE_COLLECTION',
+                    actorId: currentUserId,
+                    actorName: senderName,
+                    actorAvatar: senderAvatar,
+                    targetId: collectionId,
+                    targetName: collectionName,
+                    isPublic: true // If you can like it, it's public
                 });
             }
         }

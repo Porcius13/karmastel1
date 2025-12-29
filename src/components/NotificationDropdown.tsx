@@ -126,6 +126,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
                                                 src={notif.senderAvatar}
                                                 alt="User"
                                                 fill
+                                                sizes="36px"
                                                 className="object-cover"
                                             />
                                         </div>

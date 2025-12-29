@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Globe, Lock } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
@@ -18,6 +18,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
     const [title, setTitle] = useState(product.title);
     const [collection, setCollection] = useState(product.collection || t('edit_modal.uncategorized'));
     const [targetPrice, setTargetPrice] = useState(product.targetPrice || '');
+    const [isPublic, setIsPublic] = useState(product.isPublic || false);
     const [isSaving, setIsSaving] = useState(false);
 
     if (!isOpen) return null;
@@ -29,7 +30,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
             await updateDoc(productRef, {
                 title,
                 collection: collection === t('edit_modal.uncategorized') ? null : collection, // Convert back to null
-                targetPrice: targetPrice ? Number(targetPrice) : null
+                targetPrice: targetPrice ? Number(targetPrice) : null,
+                isPublic: isPublic
             });
 
             // Auto-Set Collection Cover & Sync Public Status (Client-Side)
@@ -54,8 +56,33 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
 
                     // A. Update the product's isPublic status to match collection
                     await updateDoc(productRef, {
-                        isPublic: isPublic
+                        isPublic: isPublic || product.isPublic // Keep individual choice if already public
                     });
+
+                    // Log Activity if product IS public and was just shared
+                    if (isPublic || product.isPublic) {
+                        const { ActivityService } = await import("@/lib/activity-service");
+                        // We need the full user profile for actor details
+                        const { UserService } = await import("@/lib/user-service");
+                        const profile = await UserService.getUserProfile(product.userId);
+
+                        await ActivityService.logActivity({
+                            type: 'ADD_PRODUCT',
+                            actorId: product.userId,
+                            actorName: profile?.displayName || profile?.username || 'Kullanıcı',
+                            actorAvatar: profile?.photoURL,
+                            targetId: product.id,
+                            targetName: title,
+                            targetImage: product.image,
+                            isPublic: true,
+                            metadata: {
+                                price: typeof product.price === 'string'
+                                    ? parseFloat(product.price.replace(/[^0-9,.-]/g, '').replace(',', '.'))
+                                    : product.price,
+                                currency: (product as any).currency || 'TRY'
+                            }
+                        });
+                    }
 
                     // B. Auto-Set Cover Image if missing
                     if (product.image && (!settingsDoc.exists() || !settingsDoc.data().image)) {
@@ -146,6 +173,24 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ product, isO
                         <p className="text-[10px] text-muted-foreground">
                             {t('edit_modal.target_price_hint')}
                         </p>
+                    </div>
+
+                    {/* Public Visibility Toggle */}
+                    <div className="pt-4 border-t border-surfaceHighlight">
+                        <div className="flex items-center justify-between p-4 bg-background/50 rounded-xl border border-surfaceHighlight group/toggle cursor-pointer" onClick={() => setIsPublic(!isPublic)}>
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${isPublic ? 'bg-primary/20 text-primary' : 'bg-surfaceHighlight text-muted-foreground'}`}>
+                                    {isPublic ? <Globe size={20} /> : <Lock size={20} />}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white">Kamuya Açık</span>
+                                    <span className="text-[10px] text-muted-foreground">Bu ürünü takipçilerinle paylaş.</span>
+                                </div>
+                            </div>
+                            <div className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPublic ? 'bg-primary' : 'bg-surfaceHighlight'}`}>
+                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
                     </div>
 
                 </div>

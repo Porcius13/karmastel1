@@ -28,10 +28,10 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="relative w-10 h-10 block dark:hidden">
-                            <Image src="/brand-logo-light.png" alt="FAVDUCK Logo" fill className="object-contain" />
+                            <Image src="/brand-logo-light.png" alt="FAVDUCK Logo" fill sizes="40px" className="object-contain" />
                         </div>
                         <div className="relative w-10 h-10 hidden dark:block">
-                            <Image src="/brand-logo-dark.png" alt="FAVDUCK Logo" fill className="object-contain" />
+                            <Image src="/brand-logo-dark.png" alt="FAVDUCK Logo" fill sizes="40px" className="object-contain" />
                         </div>
                         <span className="text-2xl animate-in fade-in duration-300 whitespace-nowrap text-foreground font-display font-black tracking-tighter">FAVDUCK</span>
                     </div>
@@ -131,6 +131,7 @@ export default function LandingPage() {
                                     alt={t('landing.dashboardPreview')}
                                     width={800}
                                     height={600}
+                                    priority
                                     className="rounded-2xl w-full h-auto object-cover opacity-90 hover:opacity-100 transition-opacity"
                                 />
                             </div>
@@ -245,10 +246,10 @@ export default function LandingPage() {
                     <div className="col-span-1 md:col-span-2 space-y-4">
                         <div className="flex items-center gap-2">
                             <div className="relative w-12 h-12 block dark:hidden">
-                                <Image src="/brand-logo-light.png" alt="FAVDUCK Logo" fill className="object-contain" />
+                                <Image src="/brand-logo-light.png" alt="FAVDUCK Logo" fill sizes="48px" className="object-contain" />
                             </div>
                             <div className="relative w-12 h-12 hidden dark:block">
-                                <Image src="/brand-logo-dark.png" alt="FAVDUCK Logo" fill className="object-contain" />
+                                <Image src="/brand-logo-dark.png" alt="FAVDUCK Logo" fill sizes="48px" className="object-contain" />
                             </div>
                             <span className="text-3xl animate-in fade-in duration-300 whitespace-nowrap text-[#412234] dark:text-[#FAF0E7]" style={{ fontFamily: "'Luckiest Guy', var(--font-luckiest-guy), cursive" }}>FAVDUCK</span>
                         </div>

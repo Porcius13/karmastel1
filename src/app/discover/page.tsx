@@ -2,16 +2,17 @@
 
 import Image from "next/image";
 import { DashboardShell } from "@/components/DashboardShell";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { DiscoverService, PublicUser, PublicCollection } from '@/lib/discover-service';
 import { UserService, UserProfile } from '@/lib/user-service';
-import { Compass, Search, User, Users, TrendingDown, ExternalLink } from 'lucide-react';
+import { Compass, Search, User, Users, TrendingDown, ExternalLink, Activity, Plus, Check } from 'lucide-react';
+import { SocialFeed } from "@/components/SocialFeed";
 import Link from 'next/link';
 import { useAuth } from "@/context/AuthContext";
 
 export default function DiscoverPage() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<'featured' | 'following'>('featured');
+    const [activeTab, setActiveTab] = useState<'featured' | 'following' | 'feed'>('featured');
 
     // Data States
     const [featuredUsers, setFeaturedUsers] = useState<PublicUser[]>([]);
@@ -27,6 +28,14 @@ export default function DiscoverPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [followingIds, setFollowingIds] = useState<string[]>([]);
+
+    // Stabilize followingIds for SocialFeed to prevent unnecessary re-renders
+    const combinedFollowingIds = useMemo(() => {
+        if (!currentUser) return [];
+        // Unique IDs: following + self
+        return Array.from(new Set([...followingIds, currentUser.uid]));
+    }, [followingIds, currentUser?.uid]);
 
     // Initial Fetch (Featured)
     useEffect(() => {
@@ -41,6 +50,11 @@ export default function DiscoverPage() {
                 setFeaturedUsers(users);
                 setPublicCollections(collections);
                 setGlobalDeals(deals);
+
+                if (currentUser) {
+                    const following = await UserService.getFollowing(currentUser.uid);
+                    setFollowingIds(following.map(f => f.uid));
+                }
             } catch (error) {
                 console.error("Error fetching discover data:", error);
             } finally {
@@ -48,7 +62,7 @@ export default function DiscoverPage() {
             }
         };
         fetchData();
-    }, []);
+    }, [currentUser]);
 
     // Fetch Followed Collections when tab changes
     useEffect(() => {
@@ -85,6 +99,23 @@ export default function DiscoverPage() {
     const clearSearch = () => {
         setSearchQuery('');
         setSearchResults([]);
+    };
+
+    const handleToggleFollow = async (targetUserId: string) => {
+        if (!currentUser) return;
+
+        const isFollowing = followingIds.includes(targetUserId);
+        try {
+            if (isFollowing) {
+                await UserService.unfollowUser(currentUser.uid, targetUserId);
+                setFollowingIds(prev => prev.filter(id => id !== targetUserId));
+            } else {
+                await UserService.followUser(currentUser.uid, targetUserId);
+                setFollowingIds(prev => [...prev, targetUserId]);
+            }
+        } catch (error) {
+            console.error("Follow error:", error);
+        }
     };
 
     const renderCollectionGrid = (collections: PublicCollection[], isLoading: boolean, emptyMessage: string) => (
@@ -256,6 +287,16 @@ export default function DiscoverPage() {
                         >
                             Following
                         </button>
+                        <button
+                            onClick={() => setActiveTab('feed')}
+                            className={`px-8 py-3 text-lg font-bold border-b-4 transition-all flex items-center gap-2 ${activeTab === 'feed'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <Activity size={20} />
+                            Feed
+                        </button>
                     </div>
                 )}
 
@@ -277,10 +318,22 @@ export default function DiscoverPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{user.displayName}</h3>
                                             <p className="text-sm text-muted-foreground">@{user.username || 'user'}</p>
                                         </div>
+                                        {currentUser && currentUser.uid !== user.uid && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleToggleFollow(user.uid);
+                                                }}
+                                                className={`p-2 rounded-full transition-all ${followingIds.includes(user.uid) ? 'bg-primary text-black' : 'bg-surfaceHighlight text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                                            >
+                                                {followingIds.includes(user.uid) ? <Check size={18} /> : <Plus size={18} />}
+                                            </button>
+                                        )}
                                     </Link>
                                 ))}
                             </div>
@@ -350,28 +403,52 @@ export default function DiscoverPage() {
                                     {renderDeals()}
                                 </section>
                             </div>
-                        ) : (
-                            /* Following Tab Content */
+                        ) : activeTab === 'following' ? (
                             <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-2xl font-bold text-foreground">From People You Follow</h2>
-                                    <Link href="/discover" className="text-sm text-primary hover:underline" onClick={() => setActiveTab('featured')}>Find more people</Link>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                                        <Users size={24} className="text-primary" />
+                                        Takip Edilen Koleksiyonlar
+                                    </h2>
                                 </div>
-
                                 {currentUser ? (
-                                    renderCollectionGrid(followedCollections, followingLoading, "The people you follow haven't shared any public collections yet (or you aren't following anyone!).")
+                                    renderCollectionGrid(followedCollections, followingLoading, "Takip ettiğin kişilerin henüz herkese açık bir koleksiyonu yok.")
                                 ) : (
                                     <div className="py-20 text-center bg-surface/30 rounded-3xl border border-dashed border-border">
                                         <Users size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
-                                        <h3 className="text-xl font-bold text-foreground mb-2">Sign in to follow curators</h3>
-                                        <p className="text-muted-foreground mb-6 max-w-md mx-auto">Create an account to follow your favorite curators and see their collections here.</p>
+                                        <h3 className="text-xl font-bold text-foreground mb-2">Giriş Yap</h3>
+                                        <p className="text-muted-foreground mb-6">Takip ettiğin kişileri görmek için giriş yapmalısın.</p>
                                         <Link href="/login" className="bg-primary text-black font-bold px-8 py-3 rounded-full hover:bg-primary/90 transition-colors inline-block">
-                                            Sign In / Register
+                                            Giriş Yap
                                         </Link>
                                     </div>
                                 )}
                             </section>
-                        )}
+                        ) : activeTab === 'feed' ? (
+                            /* Feed Tab Content */
+                            <section className="max-w-2xl mx-auto w-full">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                                        Sosyal Akış
+                                    </h2>
+                                    <span className="text-xs text-muted-foreground">
+                                        {followingIds.length} Takip
+                                    </span>
+                                </div>
+                                {currentUser ? (
+                                    <SocialFeed followingIds={combinedFollowingIds} />
+                                ) : (
+                                    <div className="py-20 text-center bg-surface/30 rounded-3xl border border-dashed border-border">
+                                        <Activity size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
+                                        <h3 className="text-xl font-bold text-foreground mb-2">Giriş Yap</h3>
+                                        <p className="text-muted-foreground mb-6">Social Feed'i görmek için giriş yapmalısın.</p>
+                                        <Link href="/login" className="bg-primary text-black font-bold px-8 py-3 rounded-full hover:bg-primary/90 transition-colors inline-block">
+                                            Giriş Yap
+                                        </Link>
+                                    </div>
+                                )}
+                            </section>
+                        ) : null}
                     </>
                 )}
             </div>

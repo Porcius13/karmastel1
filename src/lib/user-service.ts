@@ -117,22 +117,24 @@ export const UserService = {
             // Get current user details to show in notification
             const currentUserDoc = await getDoc(doc(db, "users", currentUserId));
             const currentUserData = currentUserDoc.data();
-            const senderName = currentUserData?.username || currentUserData?.displayName || "Someone";
+            const senderName = currentUserData?.displayName || currentUserData?.username || "Kullanıcı";
             const senderAvatar = currentUserData?.photoURL || null;
 
             // Dynamically import to avoid circular dependencies if any (though lib to lib is fine usually)
             const { NotificationService } = await import("./notification-service");
 
-            await NotificationService.createNotification({
-                userId: targetUserId, // Send to the person being followed
-                type: 'FOLLOW',
-                title: 'New Follower',
-                message: `${senderName} started following you.`,
-                link: `/user/${currentUserId}`,
-                senderId: currentUserId,
-                senderName: senderName,
-                senderAvatar: senderAvatar
+            // Log Social Activity
+            const { ActivityService } = await import("./activity-service");
+            await ActivityService.logActivity({
+                type: 'FOLLOW_USER',
+                actorId: currentUserId,
+                actorName: senderName,
+                actorAvatar: senderAvatar,
+                targetId: targetUserId,
+                targetName: "User", // We'd need to fetch target profile if we want their name here
+                isPublic: true // Follows are social
             });
+
         } catch (err) {
             console.error("Failed to send follow notification", err);
         }

@@ -124,7 +124,7 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             isScrapeFailed: false,
             userId: userId,
             participants: participants,
-            isPublic: isPublic,
+            isPublic: false, // Default to Private
             collection: collectionName || 'Uncategorized',
             category: CategoryService.predictCategory(scraped.title),
             highestPrice: scraped.price,

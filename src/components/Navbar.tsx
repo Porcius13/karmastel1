@@ -93,6 +93,7 @@ export default function Navbar() {
                                         className="object-cover"
                                         src={user.photoURL}
                                         fill
+                                        sizes="40px"
                                         onError={() => setImageError(true)}
                                     />
                                 ) : (
