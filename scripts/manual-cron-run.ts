@@ -2,6 +2,7 @@
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import * as crypto from 'crypto';
 
 // Load env vars
 const __filename = fileURLToPath(import.meta.url);
@@ -11,10 +12,15 @@ dotenv.config({ path: resolve(__dirname, '../.env.local') });
 // Dynamic imports
 const { adminDb } = await import("../src/lib/firebase-admin");
 const { scrapeProduct } = await import("../src/lib/scraper");
-import { Timestamp } from 'firebase-admin/firestore'; // Admin SDK types
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+
+function generateLinkHash(url: string): string {
+    const cleanUrl = url.trim();
+    return crypto.createHash('md5').update(cleanUrl).digest('hex');
+}
 
 async function main() {
-    console.log("Starting manual stock check (Admin SDK)...");
+    console.log("Starting Manual Link Pool Check...");
 
     if (!adminDb) {
         console.error("Firebase Admin DB not initialized. Check env vars.");
@@ -22,128 +28,117 @@ async function main() {
     }
 
     try {
+        const linksRef = adminDb.collection("monitored_links");
         const productsRef = adminDb.collection("products");
         const alertsRef = adminDb.collection("stock_alerts");
 
         // 1. Fetch Pending Alerts
         const alertsSnap = await alertsRef.where("status", "==", "pending").get();
-
-        // 2. Fetch Stale Products
-        let staleProducts: any[] = [];
-        try {
-            // Admin SDK 'orderBy' and 'limit' chaining
-            const staleSnap = await productsRef.orderBy("lastStockCheck", "asc").limit(5).get();
-            staleProducts = staleSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-            console.warn("Ordered query failed:", e);
-        }
-
-        // 3. Fallback
-        if (staleProducts.length < 5) {
-            // Basic fetch
-            const discoverySnap = await productsRef.limit(20).get();
-            const discovered = discoverySnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            const currentIds = new Set(staleProducts.map(p => p.id));
-            for (const p of discovered) {
-                if (!currentIds.has(p.id)) {
-                    staleProducts.push(p);
-                    currentIds.add(p.id);
-                    if (staleProducts.length >= 5) break;
-                }
-            }
-        }
-
-        // 4. Consolidate URLs
-        const urlsToCheck = new Map<string, { productIds: Set<string>, alerts: any[] }>();
+        const pendingAlertsByHash = new Map<string, any[]>();
 
         alertsSnap.forEach(doc => {
             const data = doc.data();
-            const url = data.productUrl;
-            if (!urlsToCheck.has(url)) urlsToCheck.set(url, { productIds: new Set(), alerts: [] });
-            urlsToCheck.get(url)!.alerts.push({ id: doc.id, ...data });
-            urlsToCheck.get(url)!.productIds.add(data.productId);
-        });
-
-        staleProducts.forEach(p => {
-            const url = p.url;
-            if (url && url !== "MOCK") {
-                if (!urlsToCheck.has(url)) urlsToCheck.set(url, { productIds: new Set(), alerts: [] });
-                urlsToCheck.get(url)!.productIds.add(p.id);
+            if (data.productUrl) {
+                const hash = generateLinkHash(data.productUrl);
+                if (!pendingAlertsByHash.has(hash)) pendingAlertsByHash.set(hash, []);
+                pendingAlertsByHash.get(hash)!.push({ id: doc.id, ...data });
             }
         });
 
-        const jobList = Array.from(urlsToCheck.entries());
-        console.log(`Checking ${jobList.length} unique URLs...`);
+        // 2. Fetch Stale Links
+        // Fetch a bit more for manual test
+        const limitCount = 5;
+        const linksSnap = await linksRef.orderBy("lastChecked", "asc").limit(limitCount).get();
 
-        // 5. Execution
-        for (const [url, context] of jobList) {
+        const jobs = linksSnap.docs.map(doc => ({ hash: doc.id, ...doc.data() }));
+
+        console.log(`[Link Pool] Found ${jobs.length} links to update.`);
+
+        // 3. Execution Loop
+        for (const job of jobs) {
+            const linkData = job as any;
+            const url = linkData.url;
+            const hash = job.hash;
+
+            if (!url) continue;
+
+            console.log(`[Link Pool] Processing: ${url}`);
+
             try {
-                console.log(`Scraping: ${url}`);
                 const scrapedData = await scrapeProduct(url);
-                console.log(`Scraped Price: ${scrapedData.price}, In Stock: ${scrapedData.inStock}`);
+                const newPrice = typeof scrapedData.price === 'number' ? scrapedData.price : 0;
 
-                const price = typeof scrapedData.price === 'number' ? scrapedData.price : 0;
+                // Simulating Batch
                 const batch = adminDb.batch();
 
-                for (const productId of Array.from(context.productIds)) {
-                    const productRef = productsRef.doc(productId);
+                // A. Update Monitored Link
+                const linkRef = linksRef.doc(hash);
+                batch.update(linkRef, {
+                    price: newPrice,
+                    inStock: scrapedData.inStock ?? true,
+                    title: scrapedData.title || "",
+                    image: scrapedData.image || "",
+                    lastChecked: FieldValue.serverTimestamp()
+                });
 
-                    try {
-                        const productSnap = await productRef.get();
-                        if (!productSnap.exists) continue;
-                        const productData = productSnap.data() as any;
+                // B. Fan-Out
+                if (linkData.productIds && Array.isArray(linkData.productIds)) {
+                    const productIds = linkData.productIds;
+                    console.log(`[Link Pool] Fan-out update to ${productIds.length} products: ${productIds.join(", ")}`);
 
-                        const currentPrice = productData.price || 0;
-                        const newPrice = price;
+                    for (const productId of productIds) {
+                        const productRef = productsRef.doc(productId);
 
-                        const updates: any = {
-                            price: newPrice,
-                            inStock: scrapedData.inStock,
-                            lastStockCheck: Timestamp.now()
-                        };
+                        try {
+                            const productSnap = await productRef.get();
+                            if (!productSnap.exists) continue;
+                            const productData = productSnap.data() as any;
+                            const currentPrice = productData.price || 0;
 
-                        const currentHighest = productData.highestPrice || currentPrice;
-                        if (newPrice > currentHighest) {
-                            updates.highestPrice = newPrice;
-                            updates.priceDropPercentage = 0;
-                        } else if (newPrice < currentHighest && newPrice > 0) {
-                            updates.highestPrice = currentHighest;
-                            const dropRatio = (currentHighest - newPrice) / currentHighest;
-                            updates.priceDropPercentage = Math.round(dropRatio * 100);
-                        }
-
-                        if (currentPrice !== newPrice) {
-                            const historyRef = productsRef.doc(productId).collection("priceHistory");
-                            // Add to subcollection
-                            // In Admin SDK: historyRef.add(...) calls are simple, but for batch we need doc ref.
-                            // batch.create(historyRef.doc(), { ... })
-                            const newHistoryDoc = historyRef.doc();
-                            batch.set(newHistoryDoc, {
+                            const updates: any = {
                                 price: newPrice,
-                                date: new Date().toISOString(),
-                                currency: productData.currency || 'TRY'
-                            });
+                                inStock: scrapedData.inStock ?? true,
+                                lastStockCheck: Timestamp.now()
+                            };
 
-                            console.log(`Price updated for ${productId}: ${currentPrice} -> ${newPrice}`);
-                        } else {
-                            console.log(`Price unchanged for ${productId}`);
+                            const currentHighest = productData.highestPrice || currentPrice;
+                            if (newPrice > currentHighest) {
+                                updates.highestPrice = newPrice;
+                                updates.priceDropPercentage = 0;
+                            } else if (newPrice < currentHighest && newPrice > 0) {
+                                updates.highestPrice = currentHighest;
+                                const dropRatio = (currentHighest - newPrice) / currentHighest;
+                                updates.priceDropPercentage = Math.round(dropRatio * 100);
+                            }
+
+                            if (Math.abs(currentPrice - newPrice) > 0.1) {
+                                const historyRef = productsRef.doc(productId).collection("priceHistory");
+                                const newHistoryDoc = historyRef.doc();
+                                batch.set(newHistoryDoc, {
+                                    price: newPrice,
+                                    date: new Date().toISOString(),
+                                    currency: productData.currency || 'TRY'
+                                });
+                                console.log(`[Link Pool] Price changed for product ${productId}: ${currentPrice} -> ${newPrice}`);
+                            }
+
+                            batch.update(productRef, updates);
+
+                        } catch (pErr) {
+                            console.error(`[Link Pool] Product update failed for ${productId}`, pErr);
                         }
-
-                        batch.update(productRef, updates);
-                    } catch (err) {
-                        console.error(`Error updating product ${productId}`, err);
                     }
                 }
 
                 await batch.commit();
+                console.log(`[Link Pool] Committed updates for ${hash}`);
 
             } catch (error) {
-                console.error(`Error processing URL ${url}:`, error);
+                console.error(`[Link Pool] Error processing URL ${url}:`, error);
             }
         }
 
-        console.log("Done.");
+        console.log("Manual check completed.");
 
     } catch (error) {
         console.error("Script failed:", error);
