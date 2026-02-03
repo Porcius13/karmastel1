@@ -9,6 +9,7 @@ import { trendyolScraper } from "./trendyol";
 import { genericScraper } from "./generic";
 import { lcwScraper } from "./lcw";
 import { defactoScraper } from "./defacto";
+import { mediamarktScraper } from "./mediamarkt";
 
 export function getScraper(domain: string): ScraperFunction {
     if (domain.includes("beymen.com")) return beymenScraper;
@@ -20,6 +21,7 @@ export function getScraper(domain: string): ScraperFunction {
     if (domain.includes("trendyol.com")) return trendyolScraper;
     if (domain.includes("lcw.com") || domain.includes("lcwaikiki.com")) return lcwScraper;
     if (domain.includes("defacto.com")) return defactoScraper;
+    if (domain.includes("mediamarkt.com.tr")) return mediamarktScraper;
 
     // Default to generic (which handles Shopify, Meta, JSON-LD)
     return genericScraper;

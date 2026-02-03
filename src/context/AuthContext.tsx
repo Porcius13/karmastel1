@@ -12,8 +12,11 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
+import { UserService, UserProfile } from "@/lib/user-service";
+
 interface AuthContextType {
     user: User | null;
+    profile: UserProfile | null;
     loading: boolean;
     loginWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
@@ -30,11 +33,18 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
+            if (user) {
+                const userProfile = await UserService.getUserProfile(user.uid);
+                setProfile(userProfile);
+            } else {
+                setProfile(null);
+            }
             setLoading(false);
         });
         return () => unsubscribe();
@@ -178,7 +188,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, login, signup, sendVerification, resetPassword, deleteUserAccount }}>
+        <AuthContext.Provider value={{ user, profile, loading, loginWithGoogle, logout, login, signup, sendVerification, resetPassword, deleteUserAccount }}>
             {children}
         </AuthContext.Provider>
     );

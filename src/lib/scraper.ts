@@ -109,9 +109,16 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             if (result.price === 0) {
                 Sentry.captureMessage(`Zero Price Detected: ${domainName}`, {
                     level: "warning",
-                    contexts: {
-                        "scraped_data": result as any
-                    }
+                    contexts: { "scraped_data": result as any }
+                });
+            }
+
+            // Check for missing or placeholder images
+            const isPlaceholder = result.image?.includes('placehold.co') || result.image?.includes('placeholder');
+            if (!result.image || isPlaceholder) {
+                Sentry.captureMessage(`Missing Image Detected: ${domainName}`, {
+                    level: "warning",
+                    contexts: { "scraped_data": result as any }
                 });
             }
 

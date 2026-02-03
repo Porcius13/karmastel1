@@ -14,7 +14,8 @@ import {
     Compass,
     MessageSquare,
     Bookmark,
-    Users
+    Users,
+    AlertCircle
 } from 'lucide-react';
 import { chatService } from '@/lib/chat-service';
 import { useAuth } from '@/context/AuthContext';
@@ -31,6 +32,8 @@ interface SidebarProps {
     onAddCollection?: () => void;
 }
 
+import { isUserAdmin } from '@/lib/constants';
+
 export default function Sidebar({
     className,
     isCollapsed,
@@ -40,7 +43,7 @@ export default function Sidebar({
     onAddCollection
 }: SidebarProps) {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { t } = useLanguage();
     const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -53,6 +56,8 @@ export default function Sidebar({
         return () => unsubscribe();
     }, [user]);
 
+    const isAdmin = isUserAdmin(profile?.username);
+
     const menuItems = [
         { name: t('common.discover'), icon: Compass, href: '/discover' },
         { name: t('common.all_items'), icon: List, href: '/dashboard', action: () => onSelectCollection?.(null) },
@@ -60,6 +65,7 @@ export default function Sidebar({
         { name: t('common.favorites'), icon: Heart, href: '/favorites' },
         { name: t('common.saved'), icon: Bookmark, href: '/collections/saved' },
         { name: t('common.messages'), icon: MessageSquare, href: '/messages', badge: unreadCount },
+        ...(isAdmin ? [{ name: 'Hata Günlükleri', icon: AlertCircle, href: '/admin/errors' }] : []),
     ];
 
     return (

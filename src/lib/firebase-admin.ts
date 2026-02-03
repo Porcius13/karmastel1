@@ -65,6 +65,9 @@ if (getApps().length === 0) {
     console.log("Firebase Admin: Already initialized");
 }
 
-const adminDb = getApps().length > 0 ? getFirestore() : null;
+import { getAuth } from 'firebase-admin/auth';
 
-export { adminDb };
+const adminDb = getApps().length > 0 ? getFirestore() : null;
+const adminAuth = getApps().length > 0 ? getAuth() : null;
+
+export { adminDb, adminAuth };

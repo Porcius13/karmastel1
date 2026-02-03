@@ -118,5 +118,11 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && 
                             resource.data.get('actorId', '') == request.auth.uid;
     }
+
+    // SENTRY ISSUES:
+    match /sentry_issues/{issueId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
   }
 }
