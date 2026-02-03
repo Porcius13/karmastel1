@@ -5,4 +5,7 @@ Sentry.init({
 
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
+
+    // Performance Monitoring
+    tracesSampleRate: 1.0, //  Capture 100% of the transactions
 });

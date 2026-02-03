@@ -32,6 +32,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             scope.setTag("scraper_mode", "hybrid");
         }
 
+        Sentry.addBreadcrumb({
+            category: "scraper.flow",
+            message: `Starting scrape for ${domainName}`,
+            level: "info",
+            data: { url: cleanUrlStr }
+        });
+
         // --- STAGE 1: STATIC EXTRACTION (Fast & Cheap) ---
         // Skip static for known JS-only sites to save time
         const skipStatic = domainName.includes("mavi.com") ||
@@ -40,9 +47,11 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             domainName.includes("mango.com") ||
             domainName.includes("beymen.com") ||
             domainName.includes("lcw.com") ||
+            domainName.includes("airbnb.com") ||
             domainName.includes("defacto.com");
 
         if (!skipStatic) {
+            Sentry.addBreadcrumb({ category: "scraper.static", message: "Attempting static extraction" });
             const html = await fetchStaticHtml(cleanUrlStr);
             if (html) {
                 const staticData = extractStaticData(html, cleanUrlStr);
@@ -52,6 +61,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 }
             }
             console.log(`[Hybrid Scraper] Static extraction failed or incomplete for ${domainName}. Falling back to Puppeteer...`);
+            Sentry.addBreadcrumb({ category: "scraper.static", message: "Static extraction failed or incomplete", level: "warning" });
+        } else {
+            Sentry.addBreadcrumb({ category: "scraper.static", message: "Skipping static extraction (known JS-heavy site)" });
         }
 
         // --- STAGE 2: PUPPETEER EXTRACTION (Robust & Guaranteed) ---
@@ -59,11 +71,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
         // For specialized scrapers that handle their own browser (H&M, Mavi)
         if (domainName.includes("hm.com") || domainName.includes("mavi.com")) {
+            Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Delegating to specialized scraper" });
             return await scraper({ url: cleanUrlStr, domain: domainName, browser: null, page: null });
         }
 
         let browser = null;
         try {
+            Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Launching browser" });
             browser = await getBrowser();
             const page = await browser.newPage();
 
@@ -85,16 +99,51 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                 else req.continue();
             });
 
+            Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Navigating to page" });
             await page.goto(cleanUrlStr, { waitUntil: 'domcontentloaded', timeout: 30000 });
             await new Promise(r => setTimeout(r, 1000));
 
             const result = await scraper({ url: cleanUrlStr, domain: domainName, browser, page });
+
+            // Check for semantic errors (Zero Price)
+            if (result.price === 0) {
+                Sentry.captureMessage(`Zero Price Detected: ${domainName}`, {
+                    level: "warning",
+                    contexts: {
+                        "scraped_data": result as any
+                    }
+                });
+            }
+
             return result;
 
         } catch (error: any) {
             console.error(`Scraping failed for ${domainName}:`, error.message);
             try {
-                if (Sentry.captureException) Sentry.captureException(error);
+                // Try to capture HTML snapshot if browser is still active
+                let htmlSnippet = "Could not retrieve HTML";
+                if (browser) {
+                    try {
+                        const pages = await browser.pages();
+                        if (pages.length > 0) { // Ideally we track the specific page, but finding the active one is safe enough
+                            const p = pages[pages.length - 1];
+                            const content = await p.content();
+                            htmlSnippet = content.substring(0, 5000) + "... [TRUNCATED]";
+                        }
+                    } catch (snapErr) {
+                        htmlSnippet = "Failed to snapshot: " + (snapErr as any).message;
+                    }
+                }
+
+                if (Sentry.captureException) {
+                    Sentry.captureException(error, {
+                        contexts: {
+                            "page_dump": {
+                                html_preview: htmlSnippet
+                            }
+                        }
+                    });
+                }
             } catch (e) { }
             return {
                 title: "Hata", price: 0, image: "https://placehold.co/600x600?text=Error",

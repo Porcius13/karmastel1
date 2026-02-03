@@ -331,6 +331,22 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
         );
     };
 
+    // Helper to safely resolve image source
+    const getSafeImageSrc = () => {
+        if (imageError) return "https://placehold.co/600x600?text=No+Image";
+
+        const img = product.image;
+        if (!img || typeof img !== 'string' || img.trim() === '') {
+            return "https://placehold.co/600x600?text=No+Image";
+        }
+
+        if (img.startsWith('http://')) {
+            return img.replace('http://', 'https://');
+        }
+
+        return img;
+    };
+
     return (
         <>
             <div className={`break-inside-avoid group relative flex ${viewMode === 'list' ? 'flex-row items-center gap-4 bg-surface p-4 rounded-2xl shadow-sm' : 'flex-col mb-6'}`}>
@@ -343,7 +359,7 @@ export const SmartProductCard: React.FC<SmartProductCardProps> = ({ product: ini
                         <Image
                             alt={product.title}
                             className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock ? 'grayscale opacity-60' : ''}`}
-                            src={imageError ? "https://placehold.co/600x600?text=No+Image" : ((typeof product.image === 'string' && product.image.startsWith('http://')) ? product.image.replace('http://', 'https://') : (product.image || "https://placehold.co/600x600?text=No+Image"))}
+                            src={getSafeImageSrc()}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             priority={priority}

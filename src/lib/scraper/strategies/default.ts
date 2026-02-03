@@ -279,6 +279,7 @@ export class DefaultScraper extends BaseScraper {
     async scrape(url: string): Promise<ScrapedData> {
         let browser = null;
         try {
+            Sentry.addBreadcrumb({ category: "scraper.default", message: "Initializing default scraper", data: { url } });
             browser = await getBrowser();
             const page = await browser.newPage();
 
@@ -301,6 +302,7 @@ export class DefaultScraper extends BaseScraper {
             await page.setUserAgent(userAgent);
 
             if (isAmazon || isDecathlon || isNike || isTagrean || isMavi || isOldCotton || isKufVintage) {
+                Sentry.addBreadcrumb({ category: "scraper.default", message: "Applying mobile/custom headers", data: { isMobile: userAgent.includes('Mobile') } });
                 const isMobile = userAgent.includes('iPhone') || userAgent.includes('Android');
                 await page.setExtraHTTPHeaders({
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -342,6 +344,7 @@ export class DefaultScraper extends BaseScraper {
             });
 
             try {
+                Sentry.addBreadcrumb({ category: "scraper.default", message: "Navigating", data: { url: cleanUrlStr, isMavi } });
                 await page.goto(cleanUrlStr, {
                     waitUntil: isMavi ? 'networkidle0' : 'domcontentloaded',
                     timeout: 30000
@@ -351,6 +354,7 @@ export class DefaultScraper extends BaseScraper {
                     await new Promise(r => setTimeout(r, 2000));
                 }
             } catch (error) {
+                Sentry.addBreadcrumb({ category: "scraper.default", message: "Navigation timeout/error (continuing)", level: "warning" });
                 console.warn("Navigation failed or timeout - Proceeding to extraction...");
             }
 
@@ -358,6 +362,7 @@ export class DefaultScraper extends BaseScraper {
 
             if (url.includes('hepsiburada') || url.includes('decathlon') || url.includes('trendyol') || url.includes('amazon') || url.includes('hypeofsteps') || url.includes('mavi')) {
                 try {
+                    Sentry.addBreadcrumb({ category: "scraper.default", message: "Handling site-specific interactions" });
                     if (url.includes('amazon')) {
                         const isSplash = await page.evaluate(function () {
                             const btn = document.querySelector('button, a, input[type="submit"]');
@@ -365,6 +370,7 @@ export class DefaultScraper extends BaseScraper {
                         });
 
                         if (isSplash) {
+                            Sentry.addBreadcrumb({ category: "scraper.default", message: "Clicking Amazon Splash" });
                             await page.evaluate(function () {
                                 const btns = Array.from(document.querySelectorAll('button, a, input[type="submit"]'));
                                 const target = btns.find(b => b.textContent?.includes('Alışverişe Devam Et') || (b as any).value?.includes('Alışverişe Devam Et'));
@@ -396,6 +402,7 @@ export class DefaultScraper extends BaseScraper {
             };
 
             if (finalData.price === 0 || !finalData.image) {
+                Sentry.addBreadcrumb({ category: "scraper.default", message: "Primary extraction incomplete, trying fallback regex/patterns" });
                 const html = await page.content();
                 if (finalData.price === 0) {
                     const pricePatterns = [/"price"\s*:\s*([\d.]+)/, /data-price="([\d.]+)"/];
@@ -422,7 +429,19 @@ export class DefaultScraper extends BaseScraper {
 
         } catch (error: any) {
             console.error(`Default Scraper Error:`, error.message);
-            if (Sentry.captureException) Sentry.captureException(error);
+
+            // Try to snapshot if we have a browser
+            let htmlSnippet = "No browser/page";
+            try {
+                if (browser) {
+                    const pages = await browser.pages();
+                    if (pages.length > 0) htmlSnippet = (await pages[pages.length - 1].content()).substring(0, 2000);
+                }
+            } catch (e) { }
+
+            Sentry.captureException(error, {
+                extra: { html_snippet: htmlSnippet }
+            });
             return this.getFailResult(error.message);
         } finally {
             if (browser) await browser.close();
