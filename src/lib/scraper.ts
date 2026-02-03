@@ -137,7 +137,22 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Navigating to page" });
             await page.goto(cleanUrlStr, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await new Promise(r => setTimeout(r, 1000));
+
+            // Special handling for sites with heavy bot protection (Supplementler/Vitaminler)
+            if (domainName.includes("supplementler") || domainName.includes("vitaminler")) {
+                Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Waiting for challenge to resolve (Supplementler-specific)" });
+                // Wait for a few seconds to let any JS challenges run
+                await new Promise(r => setTimeout(r, 5000));
+
+                // Try to wait for actual content to appear
+                try {
+                    await page.waitForSelector('.product-name, .product-price, .cloudzoom', { timeout: 5000 });
+                } catch (e) {
+                    // It's okay if it fails, the scraper will still try to pull what it can
+                }
+            } else {
+                await new Promise(r => setTimeout(r, 1000));
+            }
 
             const result = await scraper({ url: cleanUrlStr, domain: domainName, browser, page });
 
