@@ -10,6 +10,7 @@ import { genericScraper } from "./generic";
 import { lcwScraper } from "./lcw";
 import { defactoScraper } from "./defacto";
 import { mediamarktScraper } from "./mediamarkt";
+import { supplementlerScraper } from "./supplementler";
 
 export function getScraper(domain: string): ScraperFunction {
     if (domain.includes("beymen.com")) return beymenScraper;
@@ -22,6 +23,7 @@ export function getScraper(domain: string): ScraperFunction {
     if (domain.includes("lcw.com") || domain.includes("lcwaikiki.com")) return lcwScraper;
     if (domain.includes("defacto.com")) return defactoScraper;
     if (domain.includes("mediamarkt.com.tr")) return mediamarktScraper;
+    if (domain.includes("supplementler.com") || domain.includes("vitaminler.com")) return supplementlerScraper;
 
     // Default to generic (which handles Shopify, Meta, JSON-LD)
     return genericScraper;

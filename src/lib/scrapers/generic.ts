@@ -112,7 +112,12 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
 
         // Meta Tags Fallback
         if (!result.title) result.title = document.querySelector('meta[property="og:title"]')?.getAttribute('content') || document.title;
-        if (!result.image) result.image = cleanUrl(document.querySelector('meta[property="og:image"]')?.getAttribute('content'));
+        if (!result.image) result.image = cleanUrl(
+            document.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+            document.querySelector('.cloudzoom')?.getAttribute('src') ||
+            document.querySelector('.product-img')?.getAttribute('src') ||
+            document.querySelector('[class*="product-image"] img')?.getAttribute('src')
+        );
         if (!result.price) {
             const pm = document.querySelector('meta[property="product:price:amount"]') || document.querySelector('meta[itemprop="price"]');
             if (pm) {

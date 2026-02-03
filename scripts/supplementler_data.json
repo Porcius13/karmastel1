@@ -1,0 +1,154 @@
+{
+  "title": "Matriks Passif Mood Passiflora Ekstraktı 180 Ml - Passiflora",
+  "ogImage": "https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg",
+  "twitterImage": "https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg",
+  "ldJson": "\n{\n    \"@context\": \"https://schema.org/\",\n    \"@type\": \"Product\",\n    \"name\": \"Matriks Passif Mood Passiflora Ekstraktı 180 Ml - Passiflora\",\n    \"productID\": \"6510\",\n    \"brand\":\n    {\n        \"@type\": \"Brand\",\n        \"name\": \"Matriks\"\n    },\n    \"description\": \"Matriks Passif Mood Passiflora Ekstraktı 180 mL faydaları, kullanımı, özellikleri ve kullanıcı yorumları hakkında detaylı bilgi alabilir; ürünü uygun fiyat ve ücretsiz kargo fırsatı ile Vitaminler.com’dan hemen satın alabilirsiniz.\",\n    \"image\": [\"https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg\",\"https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61213.jpeg\",\"https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61214.jpeg\",\"https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61215.jpeg\",\"https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61216.jpeg\"],\n    \"offers\": [\n            \n            {\n                \"@type\":\"Offer\",\n                \"sku\":\"VBTPASMXI00101054\",\n                \"price\":362,\n                \"priceCurrency\":\"TRY\",\n                \"availability\":\"https://schema.org/InStock\",\n                \"itemCondition\":\"https://schema.org/NewCondition\",\n                \"image\": [],\n                \"seller\":\n                {\n                    \"@type\":\"Organization\",\n                    \"name\":\"Supplementler.com\"\n                },\n                \"url\":\"http://www.vitaminler.com/urun/matriks-passif-mood-passiflora-ekstrakti-180-ml-6510\",\n                \"shippingDetails\":\n                {\n                    \"@type\": \"OfferShippingDetails\",\n                    \"shippingRate\":\n                    {\n                        \"@type\": \"MonetaryAmount\",\n                        \"value\": \"0\",\n                        \"currency\": \"TRY\"\n                    },\n                    \"shippingDestination\":\n                    {\n                        \"@type\": \"DefinedRegion\",\n                        \"addressCountry\": \"TR\",\n                        \"postalCodeRange\":\n                        {\n                            \"postalCodeBegin\": \"01000\",\n                            \"postalCodeEnd\": \"81600\"\n                        }\n                    },\n                    \"deliveryTime\":\n                    {\n                        \"@type\": \"ShippingDeliveryTime\",\n                        \"handlingTime\":\n                        {\n                            \"@type\": \"QuantitativeValue\",\n                            \"minValue\": \"0\",\n                            \"maxValue\": \"2\"\n                        },\n                        \"transitTime\":\n                        {\n                            \"@type\": \"QuantitativeValue\",\n                            \"minValue\": \"1\",\n                            \"maxValue\": \"5\"\n                        },\n                        \"cutOffTime\": \"17:00-09:00\",\n                        \"businessDays\":\n                        {\n                            \"@type\": \"OpeningHoursSpecification\",\n                            \"dayOfWeek\": [\"https://schema.org/Monday\", \"https://schema.org/Tuesday\", \"https://schema.org/Wednesday\", \"https://schema.org/Thursday\",\"https://schema.org/Friday\" ]\n                        }\n                    }\n                }\n            }\n            \n    ]\n}\n",
+  "images": [
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/loading.gif"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/slices/vitaminler/logo-vitaminler.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/loading.gif"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg",
+      "class": "cloudzoom"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61213.jpeg",
+      "class": "cloudzoom"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61214.jpeg",
+      "class": "cloudzoom"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61215.jpeg",
+      "class": "cloudzoom"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61216.jpeg",
+      "class": "cloudzoom"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61213.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61214.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61215.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61216.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/aroma/bogurtlen.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/aroma/bogurtlen.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/vitaminler-icons/pdp/icon-addtocart.svg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/add-product-icon.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/icon-tatlandirici-v-new.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/icon-domuz-v-new.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/icon-gdo-v-new.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/145/145/Assets/Supplementler/Thumbs/matriks_passif_mood_30_kapsul_8848.jpeg",
+      "class": ""
+    },
+    {
+      "src": "",
+      "class": "product-image-review"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/90/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg",
+      "class": "product-img"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/vitaminler-icons/pdp/icon-addtocart.svg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/preorder-badge-2.png"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/mnresize/400/-/Assets/Supplementler/Thumbs/matriks_passif_mood_passiflora_ekstrakt_180_ml_61212.jpeg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/original.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/cargo.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/security.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/payment.svg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/Themes/Supplementler/Content/images/vitaminler-qr-black.png"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/ios-app-download.png"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/gp-app-download.png"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-instagram.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-facebook.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-twitter.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-youtube.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-linkedin.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/logo-pinterest.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/phone.svg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/whatsapp.svg"
+    },
+    {
+      "src": "https://vitaminler.mncdn.com/themes/supplementler/content/images/ajax_loader_small.gif"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vitaminler-icons/footer/credit-cards.jpg"
+    },
+    {
+      "src": "/Themes/Supplementler/Content/images/vit-footer.png"
+    },
+    {
+      "src": "https://supplementler2.sm.mncdn.com/Themes/Supplementler/Content/images/etbis/new-etbis-vit.jpg"
+    }
+  ]
+}
