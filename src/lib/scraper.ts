@@ -48,9 +48,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             domainName.includes("beymen.com") ||
             domainName.includes("lcw.com") ||
             domainName.includes("airbnb.com") ||
-            domainName.includes("defacto.com") ||
-            domainName.includes("supplementler.com") ||
-            domainName.includes("vitaminler.com");
+            domainName.includes("defacto.com");
 
         if (!skipStatic) {
             Sentry.addBreadcrumb({ category: "scraper.static", message: "Attempting static extraction" });
@@ -81,6 +79,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
         try {
             Sentry.addBreadcrumb({ category: "scraper.puppeteer", message: "Launching browser" });
             browser = await getBrowser();
+            if (!browser) {
+                throw new Error("Failed to launch browser instance");
+            }
             const page = await browser.newPage();
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
@@ -128,6 +129,12 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
         } catch (error: any) {
             console.error(`Scraping failed for ${domainName}:`, error.message);
+
+            // Explicitly notify Sentry about the failure reason
+            Sentry.captureMessage(`Scraping Failure: ${domainName}`, {
+                level: "error",
+                extra: { error: error.message, url: cleanUrlStr }
+            });
             try {
                 // Try to capture HTML snapshot if browser is still active
                 let htmlSnippet = "Could not retrieve HTML";

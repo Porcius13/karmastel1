@@ -70,6 +70,15 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
             }
         }
 
+        if (domain.includes('supplementler.com') || domain.includes('vitaminler.com')) {
+            if (!result.title) result.title = $('.product-name').first().text() || $('h1').first().text() || "";
+            if (!result.image) result.image = $('.cloudzoom').first().attr('src') || $('.cloudzoom').first().attr('data-cloudzoom') || "";
+            if (result.price === 0) {
+                const sPrice = $('.product-price').first().text() || $('.current-price').first().text();
+                if (sPrice) result.price = smartPriceParse(sPrice);
+            }
+        }
+
         // Final Validation: If we have at least a title and a price, it's a success
         if (result.title && result.price > 0) {
             return result;
