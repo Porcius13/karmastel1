@@ -46,6 +46,6 @@ export const AVATAR_OPTIONS = [
 
 export const isUserAdmin = (username: string | undefined): boolean => {
     if (!username) return false;
-    const adminUsernames = (process.env.NEXT_PUBLIC_ADMIN_USERNAMES || "").split(",").map(u => u.trim());
-    return adminUsernames.includes(username);
+    const adminUsernames = (process.env.NEXT_PUBLIC_ADMIN_USERNAMES || "").split(",").map(u => u.trim().toLowerCase());
+    return adminUsernames.includes(username.toLowerCase());
 };
