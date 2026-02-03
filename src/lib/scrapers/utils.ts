@@ -56,8 +56,18 @@ export async function getBrowser() {
         try {
             const execPath = await chromiumAny.executablePath(remoteExecutablePath);
             return await puppeteerCore.launch({
-                args: [...chromiumAny.args, "--hide-scrollbars", "--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"],
-                defaultViewport: { width: 1366, height: 768, deviceScaleFactor: 1 },
+                args: [
+                    ...chromiumAny.args,
+                    "--hide-scrollbars",
+                    "--disable-web-security",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-infobars",
+                    "--window-size=1920,1080",
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                ],
+                defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
                 executablePath: execPath,
                 headless: chromiumAny.headless,
                 ignoreHTTPSErrors: true,
@@ -77,7 +87,8 @@ export async function getBrowser() {
                     '--disable-blink-features=AutomationControlled',
                     '--test-type',
                     '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process'
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--window-size=1920,1080'
                 ]
             });
         } catch (err) {
@@ -102,4 +113,23 @@ export async function fetchStaticHtml(url: string): Promise<string> {
         console.warn(`Static fetch failed for ${url}:`, error instanceof Error ? error.message : error);
         return "";
     }
+}
+
+export function isBotChallenge(title: string, content: string): boolean {
+    const challengePhrases = [
+        "bir dakika lütfen",
+        "checking your browser",
+        "access denied",
+        "just a moment",
+        "cloudflare",
+        "ddos protection",
+        "please wait",
+        "human verification",
+        "robot değilsiniz",
+        "olağandışı trafik"
+    ];
+    const lowerTitle = (title || "").toLowerCase();
+    const lowerContent = (content || "").substring(0, 5000).toLowerCase();
+
+    return challengePhrases.some(phrase => lowerTitle.includes(phrase) || lowerContent.includes(phrase));
 }

@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { getScraper } from "./scrapers/registry";
-import { getBrowser, smartPriceParse, fetchStaticHtml } from "./scrapers/utils";
+import { getBrowser, smartPriceParse, fetchStaticHtml, isBotChallenge } from "./scrapers/utils";
 import { extractStaticData } from "./scrapers/static-extractor";
 import { ScrapedData } from "./scrapers/types";
 
@@ -56,8 +56,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             if (html) {
                 const staticData = extractStaticData(html, cleanUrlStr);
                 if (staticData && staticData.title && staticData.price > 0) {
-                    console.log(`[Hybrid Scraper] Static extraction SUCCESS for ${domainName}`);
-                    return staticData;
+                    if (isBotChallenge(staticData.title, html)) {
+                        console.log(`[Hybrid Scraper] Static extraction detected BOT CHALLENGE for ${domainName}`);
+                        Sentry.addBreadcrumb({ category: "scraper.static", message: "Bot challenge detected in static HTML", level: "warning" });
+                    } else {
+                        console.log(`[Hybrid Scraper] Static extraction SUCCESS for ${domainName}`);
+                        return staticData;
+                    }
                 }
             }
             console.log(`[Hybrid Scraper] Static extraction failed or incomplete for ${domainName}. Falling back to Puppeteer...`);
@@ -108,18 +113,15 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
 
             const result = await scraper({ url: cleanUrlStr, domain: domainName, browser, page });
 
-            // Check for semantic errors (Zero Price)
-            if (result.price === 0) {
-                Sentry.captureMessage(`Zero Price Detected: ${domainName}`, {
-                    level: "warning",
-                    contexts: { "scraped_data": result as any }
-                });
+            // Detect Challenge after specialized scraping as well
+            const pageTitle = await page.title();
+            const pageContent = await page.content();
+            if (isBotChallenge(pageTitle, pageContent)) {
+                throw new Error(`Bot challenge detected (Cloudflare/WAF) for ${domainName}`);
             }
 
-            // Check for missing or placeholder images
-            const isPlaceholder = result.image?.includes('placehold.co') || result.image?.includes('placeholder');
-            if (!result.image || isPlaceholder) {
-                Sentry.captureMessage(`Missing Image Detected: ${domainName}`, {
+            if (result.price === 0) {
+                Sentry.captureMessage(`Zero Price Detected: ${domainName}`, {
                     level: "warning",
                     contexts: { "scraped_data": result as any }
                 });
@@ -130,37 +132,13 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
         } catch (error: any) {
             console.error(`Scraping failed for ${domainName}:`, error.message);
 
-            // Explicitly notify Sentry about the failure reason
-            Sentry.captureMessage(`Scraping Failure: ${domainName}`, {
-                level: "error",
-                extra: { error: error.message, url: cleanUrlStr }
+            Sentry.captureException(error, {
+                extra: { url: cleanUrlStr, domain: domainName }
             });
-            try {
-                // Try to capture HTML snapshot if browser is still active
-                let htmlSnippet = "Could not retrieve HTML";
-                if (browser) {
-                    try {
-                        const pages = await browser.pages();
-                        if (pages.length > 0) { // Ideally we track the specific page, but finding the active one is safe enough
-                            const p = pages[pages.length - 1];
-                            const content = await p.content();
-                            htmlSnippet = content.substring(0, 5000) + "... [TRUNCATED]";
-                        }
-                    } catch (snapErr) {
-                        htmlSnippet = "Failed to snapshot: " + (snapErr as any).message;
-                    }
-                }
 
-                if (Sentry.captureException) {
-                    Sentry.captureException(error, {
-                        contexts: {
-                            "page_dump": {
-                                html_preview: htmlSnippet
-                            }
-                        }
-                    });
-                }
-            } catch (e) { }
+            // Critical for serverless environments
+            await Sentry.flush(2000);
+
             return {
                 title: "Hata", price: 0, image: "https://placehold.co/600x600?text=Error",
                 currency: "TRY", description: "Ürün bilgileri alınamadı.",

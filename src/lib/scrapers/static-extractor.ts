@@ -71,8 +71,18 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
         }
 
         if (domain.includes('supplementler.com') || domain.includes('vitaminler.com')) {
-            if (!result.title) result.title = $('.product-name').first().text() || $('h1').first().text() || "";
-            if (!result.image) result.image = $('.cloudzoom').first().attr('src') || $('.cloudzoom').first().attr('data-cloudzoom') || "";
+            const sTitle = $('.product-name').first().text() || $('h1').first().text() || "";
+            const sImage = $('.cloudzoom').first().attr('src') || $('.cloudzoom').first().attr('data-cloudzoom') || "";
+
+            // Re-import isBotChallenge if needed or use local logic to avoid circular deps if they exist
+            // Actually, it's better to just check here since we have the title
+            if (sTitle.toLowerCase().includes("bir dakika") || sTitle.toLowerCase().includes("lütfen")) {
+                return null;
+            }
+
+            if (!result.title) result.title = sTitle;
+            if (!result.image) result.image = sImage;
+
             if (result.price === 0) {
                 const sPrice = $('.product-price').first().text() || $('.current-price').first().text();
                 if (sPrice) result.price = smartPriceParse(sPrice);

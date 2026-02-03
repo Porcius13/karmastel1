@@ -148,7 +148,10 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
             console.warn("Processing: Scraping failed, switching to failed_products details:", scrapeError);
 
             try {
-                Sentry.captureException(scrapeError);
+                Sentry.captureException(scrapeError, {
+                    extra: { url, userId, stage: "scraping" }
+                });
+                await Sentry.flush(2000);
             } catch (e) {
                 console.warn("Sentry capture failed");
             }
@@ -270,7 +273,10 @@ export async function processProduct({ url, userId, collectionName }: ProcessPro
         } catch (dbError: any) {
             console.error("Processing: Database Save Error:", dbError);
             try {
-                Sentry.captureException(dbError);
+                Sentry.captureException(dbError, {
+                    extra: { url, userId, stage: "db_save" }
+                });
+                await Sentry.flush(2000);
             } catch (e) {
                 // Sentry might fail in script environment
             }
