@@ -89,17 +89,45 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             }
             const page = await browser.newPage();
 
+            // --- ADVANCED STEALTH INJECTION ---
+            await page.evaluateOnNewDocument(() => {
+                // Pass the Webdriver Test
+                Object.defineProperty(navigator, 'webdriver', { get: () => false });
+
+                // Pass the Chrome Test
+                // @ts-ignore
+                window.chrome = { runtime: {} };
+
+                // Pass the Permissions Test
+                const originalQuery = window.navigator.permissions.query;
+                // @ts-ignore
+                window.navigator.permissions.query = (parameters) => (
+                    parameters.name === 'notifications' ?
+                        Promise.resolve({ state: Notification.permission }) :
+                        originalQuery(parameters)
+                );
+
+                // Pass the Plugins Test
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+
+                // Pass the Languages Test
+                Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr', 'en-US', 'en'] });
+            });
+
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
             await page.setExtraHTTPHeaders({
                 'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Referer': 'https://www.google.com/',
-                'Upgrade-Insecure-Requests': '1',
                 'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
                 'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"'
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
             });
-            await page.setViewport({ width: 1366, height: 768 });
+            await page.setViewport({ width: 1920, height: 1080 });
 
             await page.setRequestInterception(true);
             page.on('request', (req) => {
