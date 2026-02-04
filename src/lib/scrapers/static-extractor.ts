@@ -89,6 +89,15 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
             }
         }
 
+        if (domain.includes('dr.com.tr')) {
+            if (result.price === 0) {
+                const drPrice = $('.salePrice').first().text() || $('.price-box .price').first().text();
+                if (drPrice) result.price = smartPriceParse(drPrice);
+            }
+            const drStock = $('.out-of-stock').length > 0 || $('.not-on-sale').length > 0 || $('.add-to-cart-container').text().includes('Tükendi');
+            if (drStock) result.inStock = false;
+        }
+
         // Final Validation: If we have at least a title and a price, it's a success
         if (result.title && result.price > 0) {
             return result;

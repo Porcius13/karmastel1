@@ -126,6 +126,23 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
             }
         }
 
+        // Strategy C: dr.com.tr Specific Selectors
+        if (window.location.hostname.includes('dr.com.tr')) {
+            if (!result.price) {
+                const drPrice = document.querySelector('.salePrice')?.innerText || 
+                                document.querySelector('.price-box .price')?.innerText;
+                if (drPrice) {
+                    result.price = drPrice;
+                    result.source = 'dr-specific';
+                }
+            }
+            // Check for Out of Stock on dr.com.tr
+            const isOutOfStock = !!document.querySelector('.out-of-stock') || 
+                                !!document.querySelector('.not-on-sale') ||
+                                document.querySelector('.add-to-cart-container')?.innerText.includes('Tükendi');
+            if (isOutOfStock) result.inStock = false;
+        }
+
         return result;
     }`);
 

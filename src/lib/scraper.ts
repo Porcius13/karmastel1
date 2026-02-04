@@ -166,7 +166,18 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             if (result.price === 0) {
                 Sentry.captureMessage(`Zero Price Detected: ${domainName}`, {
                     level: "warning",
-                    contexts: { "scraped_data": result as any }
+                    contexts: {
+                        "scraped_data": result as any,
+                        "page_info": {
+                            url: cleanUrlStr,
+                            title: pageTitle,
+                            domain: domainName,
+                            selector_source: result.source
+                        }
+                    },
+                    extra: {
+                        html_snippet: pageContent.substring(0, 10000) // Capture first 10k chars of HTML
+                    }
                 });
             }
 
