@@ -91,10 +91,21 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
 
         if (domain.includes('dr.com.tr')) {
             if (result.price === 0) {
-                const drPrice = $('.salePrice').first().text() || $('.price-box .price').first().text();
+                const drPrice = $('.salePrice').first().text() ||
+                    $('.price-box .price').first().text() ||
+                    $('.product-price').first().text() ||
+                    $('.currentPrice').first().text() ||
+                    $('[itemprop="price"]').attr('content') ||
+                    $('[itemprop="price"]').first().text();
                 if (drPrice) result.price = smartPriceParse(drPrice);
             }
-            const drStock = $('.out-of-stock').length > 0 || $('.not-on-sale').length > 0 || $('.add-to-cart-container').text().includes('Tükendi');
+            const drStock = $('.out-of-stock').length > 0 ||
+                $('.not-on-sale').length > 0 ||
+                $('.product-info__out-of-stock').length > 0 ||
+                $('.btn-out-of-stock').length > 0 ||
+                $('span:contains("Stokta Yok")').length > 0 ||
+                $('button:contains("Tükendi")').length > 0 ||
+                $('.add-to-cart-container').text().includes('Tükendi');
             if (drStock) result.inStock = false;
         }
 

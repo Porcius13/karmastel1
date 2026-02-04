@@ -172,7 +172,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
                             url: cleanUrlStr,
                             title: pageTitle,
                             domain: domainName,
-                            selector_source: result.source
+                            selector_source: result.source,
+                            raw_title: result.rawTitle,
+                            raw_price: result.rawPrice
                         }
                     },
                     extra: {

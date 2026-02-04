@@ -130,7 +130,11 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
         if (window.location.hostname.includes('dr.com.tr')) {
             if (!result.price) {
                 const drPrice = document.querySelector('.salePrice')?.innerText || 
-                                document.querySelector('.price-box .price')?.innerText;
+                                document.querySelector('.price-box .price')?.innerText ||
+                                document.querySelector('.product-price')?.innerText ||
+                                document.querySelector('.currentPrice')?.innerText ||
+                                document.querySelector('[itemprop="price"]')?.innerText ||
+                                document.querySelector('[itemprop="price"]')?.getAttribute('content');
                 if (drPrice) {
                     result.price = drPrice;
                     result.source = 'dr-specific';
@@ -139,7 +143,12 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
             // Check for Out of Stock on dr.com.tr
             const isOutOfStock = !!document.querySelector('.out-of-stock') || 
                                 !!document.querySelector('.not-on-sale') ||
-                                document.querySelector('.add-to-cart-container')?.innerText.includes('Tükendi');
+                                !!document.querySelector('.product-info__out-of-stock') ||
+                                !!document.querySelector('.btn-out-of-stock') ||
+                                Array.from(document.querySelectorAll('span, button, div')).some(el => 
+                                    (el.innerText || "").includes('Tükendi') || 
+                                    (el.innerText || "").includes('Stokta Yok')
+                                );
             if (isOutOfStock) result.inStock = false;
         }
 
@@ -153,6 +162,8 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
         currency: domData.currency || "TRY",
         description: "",
         inStock: domData.inStock,
-        source: domData.source
+        source: domData.source,
+        rawTitle: domData.title,
+        rawPrice: domData.price?.toString()
     };
 }

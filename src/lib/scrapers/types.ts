@@ -7,6 +7,8 @@ export interface ScrapedData {
     inStock: boolean;
     source: string;
     error?: string;
+    rawTitle?: string;
+    rawPrice?: string;
 }
 
 export interface ScraperContext {
