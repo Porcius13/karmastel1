@@ -152,6 +152,22 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
             if (isOutOfStock) result.inStock = false;
         }
 
+        // Strategy D: Swatch Specific Selectors
+        if (window.location.hostname.includes('swatch.com')) {
+            if (!result.price) {
+                const swatchPrice = document.querySelector('.price .value')?.innerText || 
+                                    document.querySelector('.sales .value')?.innerText ||
+                                    document.querySelector('.price')?.innerText;
+                if (swatchPrice) {
+                    result.price = swatchPrice;
+                    result.source = 'swatch-specific';
+                }
+            }
+            if (!result.title) {
+                result.title = document.querySelector('h1')?.innerText;
+            }
+        }
+
         return result;
     }`);
 

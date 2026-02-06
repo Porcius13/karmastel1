@@ -109,6 +109,18 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
             if (drStock) result.inStock = false;
         }
 
+        if (domain.includes('swatch.com')) {
+            if (result.price === 0) {
+                const swatchPrice = $('.price .value').first().text() ||
+                    $('.sales .value').first().text() ||
+                    $('.price').first().text();
+                if (swatchPrice) result.price = smartPriceParse(swatchPrice);
+            }
+            if (!result.title) {
+                result.title = $('h1').first().text().trim();
+            }
+        }
+
         // Final Validation: If we have at least a title and a price, it's a success
         if (result.title && result.price > 0) {
             return result;
