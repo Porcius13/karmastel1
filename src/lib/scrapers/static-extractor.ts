@@ -116,8 +116,14 @@ export function extractStaticData(html: string, url: string): ScrapedData | null
                     $('.price').first().text();
                 if (swatchPrice) result.price = smartPriceParse(swatchPrice);
             }
-            if (!result.title) {
+            if (!result.title || result.title === 'İsimsiz Ürün') {
                 result.title = $('h1').first().text().trim();
+            }
+            if (!result.image || result.image === "") {
+                const swatchImg = $('.product-detail .primary-image img').first().attr('src') ||
+                    $('.pdp-main-image img').first().attr('src') ||
+                    $('.product-img img').first().attr('src');
+                if (swatchImg) result.image = swatchImg;
             }
         }
 

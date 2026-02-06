@@ -48,7 +48,6 @@ export async function scrapeProduct(url: string): Promise<ScrapedData> {
             domainName.includes("beymen.com") ||
             domainName.includes("lcw.com") ||
             domainName.includes("airbnb.com") ||
-            domainName.includes("swatch.com") ||
             domainName.includes("defacto.com");
 
         if (!skipStatic) {

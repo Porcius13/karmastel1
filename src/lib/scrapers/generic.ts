@@ -163,8 +163,14 @@ export async function genericScraper(context: ScraperContext): Promise<ScrapedDa
                     result.source = 'swatch-specific';
                 }
             }
-            if (!result.title) {
-                result.title = document.querySelector('h1')?.innerText;
+            if (!result.title || result.title === 'İsimsiz Ürün') {
+                result.title = (document.querySelector('h1')?.innerText || "").trim();
+            }
+            if (!result.image || result.image.includes('placehold.co')) {
+                const swatchImg = document.querySelector('.product-detail .primary-image img')?.getAttribute('src') ||
+                                  document.querySelector('.pdp-main-image img')?.getAttribute('src') ||
+                                  document.querySelector('.product-img img')?.getAttribute('src');
+                if (swatchImg) result.image = cleanUrl(swatchImg);
             }
         }
 
